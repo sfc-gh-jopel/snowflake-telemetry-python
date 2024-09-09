@@ -4,7 +4,7 @@
 
 import typing
 
-from opentelemetry.proto.logs.v1.logs_pb2 import (
+from snowflake.telemetry.proto.logs.v1.logs_pb2 import (
     LogsData,
 )
 from snowflake.telemetry._internal.exporter.otlp.proto.logs import (

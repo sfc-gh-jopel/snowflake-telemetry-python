@@ -15,19 +15,19 @@
 # pylint: disable=protected-access
 import unittest
 
-from opentelemetry.exporter.otlp.proto.common.metrics_encoder import (
+from snowflake.telemetry.exporter.otlp.proto.common.metrics_encoder import (
     encode_metrics,
 )
-from opentelemetry.proto.collector.metrics.v1.metrics_service_pb2 import (
+from snowflake.telemetry.proto.collector.metrics.v1.metrics_service_pb2 import (
     ExportMetricsServiceRequest,
 )
-from opentelemetry.proto.common.v1.common_pb2 import (
+from snowflake.telemetry.proto.common.v1.common_pb2 import (
     AnyValue,
     InstrumentationScope,
     KeyValue,
 )
-from opentelemetry.proto.metrics.v1 import metrics_pb2 as pb2
-from opentelemetry.proto.resource.v1.resource_pb2 import (
+from snowflake.telemetry.proto.metrics.v1 import metrics_pb2 as pb2
+from snowflake.telemetry.proto.resource.v1.resource_pb2 import (
     Resource as OTLPResource,
 )
 from opentelemetry.sdk.metrics.export import AggregationTemporality, Buckets

@@ -17,27 +17,27 @@
 import unittest
 from typing import List, Tuple
 
-from opentelemetry.exporter.otlp.proto.common._internal import (
+from snowflake.telemetry.exporter.otlp.proto.common._internal import (
     _encode_span_id,
     _encode_trace_id,
 )
-from opentelemetry.exporter.otlp.proto.common._internal.trace_encoder import (
+from snowflake.telemetry.exporter.otlp.proto.common._internal.trace_encoder import (
     _SPAN_KIND_MAP,
     _encode_status,
 )
-from opentelemetry.exporter.otlp.proto.common.trace_encoder import encode_spans
-from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
+from snowflake.telemetry.exporter.otlp.proto.common.trace_encoder import encode_spans
+from snowflake.telemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest as PB2ExportTraceServiceRequest,
 )
-from opentelemetry.proto.common.v1.common_pb2 import AnyValue as PB2AnyValue
-from opentelemetry.proto.common.v1.common_pb2 import (
+from snowflake.telemetry.proto.common.v1.common_pb2 import AnyValue as PB2AnyValue
+from snowflake.telemetry.proto.common.v1.common_pb2 import (
     InstrumentationScope as PB2InstrumentationScope,
 )
-from opentelemetry.proto.common.v1.common_pb2 import KeyValue as PB2KeyValue
-from opentelemetry.proto.resource.v1.resource_pb2 import (
+from snowflake.telemetry.proto.common.v1.common_pb2 import KeyValue as PB2KeyValue
+from snowflake.telemetry.proto.resource.v1.resource_pb2 import (
     Resource as PB2Resource,
 )
-from opentelemetry.proto.trace.v1.trace_pb2 import (
+from snowflake.telemetry.proto.trace.v1.trace_pb2 import (
     ResourceSpans as PB2ResourceSpans,
     TracesData as PB2TracesData,
     ScopeSpans as PB2ScopeSpans,

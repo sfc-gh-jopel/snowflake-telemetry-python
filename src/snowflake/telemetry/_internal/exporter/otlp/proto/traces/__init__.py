@@ -16,10 +16,10 @@ Please see the class documentation for those classes to learn more.
 import abc
 import typing
 
-from opentelemetry.exporter.otlp.proto.common.trace_encoder import (
+from snowflake.telemetry.exporter.otlp.proto.common.trace_encoder import (
     encode_spans,
 )
-from opentelemetry.proto.trace.v1.trace_pb2 import TracesData
+from snowflake.telemetry.proto.trace.v1.trace_pb2 import TracesData
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.trace.export import (
     SpanExportResult,
@@ -47,7 +47,7 @@ class ProtoSpanExporter(SpanExporter):
     Implementation of the SpanExporter interface for exporting spans.
 
     This implementation writes serialized
-    opentelemetry.proto.trace.v1.trace_pb2.TracesData protobuf messages
+    snowflake.telemetry.proto.trace.v1.trace_pb2.TracesData protobuf messages
     according to the implementation you provide to the SpanWriter abstract base
     class above.
     """

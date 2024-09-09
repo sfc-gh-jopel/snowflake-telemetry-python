@@ -3,8 +3,8 @@ from typing import List
 
 import serialize
 
-from opentelemetry.proto.common.v1 import common_pb2 
-from opentelemetry.proto.resource.v1 import resource_pb2
+from snowflake.telemetry.proto.common.v1 import common_pb2 
+from snowflake.telemetry.proto.resource.v1 import resource_pb2
 
 
 class SpanFlags(serialize.Enum):

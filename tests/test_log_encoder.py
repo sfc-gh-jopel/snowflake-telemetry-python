@@ -16,28 +16,28 @@ import unittest
 from typing import Sequence, Tuple
 
 from opentelemetry._logs import SeverityNumber
-from opentelemetry.exporter.otlp.proto.common._internal import (
+from snowflake.telemetry.exporter.otlp.proto.common._internal import (
     _encode_attributes,
     _encode_span_id,
     _encode_trace_id,
     _encode_value,
 )
-from opentelemetry.exporter.otlp.proto.common._log_encoder import encode_logs
-from opentelemetry.proto.collector.logs.v1.logs_service_pb2 import (
+from snowflake.telemetry.exporter.otlp.proto.common._log_encoder import encode_logs
+from snowflake.telemetry.proto.collector.logs.v1.logs_service_pb2 import (
     ExportLogsServiceRequest,
 )
-from opentelemetry.proto.common.v1.common_pb2 import AnyValue as PB2AnyValue
-from opentelemetry.proto.common.v1.common_pb2 import (
+from snowflake.telemetry.proto.common.v1.common_pb2 import AnyValue as PB2AnyValue
+from snowflake.telemetry.proto.common.v1.common_pb2 import (
     InstrumentationScope as PB2InstrumentationScope,
 )
-from opentelemetry.proto.common.v1.common_pb2 import KeyValue as PB2KeyValue
-from opentelemetry.proto.logs.v1.logs_pb2 import LogRecord as PB2LogRecord
-from opentelemetry.proto.logs.v1.logs_pb2 import LogsData as PB2LogsData
-from opentelemetry.proto.logs.v1.logs_pb2 import (
+from snowflake.telemetry.proto.common.v1.common_pb2 import KeyValue as PB2KeyValue
+from snowflake.telemetry.proto.logs.v1.logs_pb2 import LogRecord as PB2LogRecord
+from snowflake.telemetry.proto.logs.v1.logs_pb2 import LogsData as PB2LogsData
+from snowflake.telemetry.proto.logs.v1.logs_pb2 import (
     ResourceLogs as PB2ResourceLogs,
 )
-from opentelemetry.proto.logs.v1.logs_pb2 import ScopeLogs as PB2ScopeLogs
-from opentelemetry.proto.resource.v1.resource_pb2 import (
+from snowflake.telemetry.proto.logs.v1.logs_pb2 import ScopeLogs as PB2ScopeLogs
+from snowflake.telemetry.proto.resource.v1.resource_pb2 import (
     Resource as PB2Resource,
 )
 from opentelemetry.sdk._logs import LogData, LogLimits, LogRecord as SDKLogRecord

@@ -3,7 +3,7 @@ from typing import List
 
 import serialize
 
-from opentelemetry.proto.logs.v1 import logs_pb2
+from snowflake.telemetry.proto.logs.v1 import logs_pb2
 
 
 @dataclass

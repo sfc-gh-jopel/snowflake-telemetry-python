@@ -6,7 +6,7 @@ import inspect
 import logging
 import unittest
 
-from opentelemetry.proto.logs.v1.logs_pb2 import (
+from snowflake.telemetry.proto.logs.v1.logs_pb2 import (
     SEVERITY_NUMBER_WARN,
     SEVERITY_NUMBER_ERROR,
     SEVERITY_NUMBER_FATAL,

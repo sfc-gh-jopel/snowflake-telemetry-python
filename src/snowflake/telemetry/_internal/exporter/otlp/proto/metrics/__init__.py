@@ -17,10 +17,10 @@ import abc
 from typing import Dict
 
 import opentelemetry
-from opentelemetry.exporter.otlp.proto.common.metrics_encoder import (
+from snowflake.telemetry.exporter.otlp.proto.common.metrics_encoder import (
     encode_metrics,
 )
-from opentelemetry.proto.metrics.v1.metrics_pb2 import MetricsData as PB2MetricsData
+from snowflake.telemetry.proto.metrics.v1.metrics_pb2 import MetricsData as PB2MetricsData
 from opentelemetry.sdk.metrics.export import (
     AggregationTemporality,
     MetricExportResult,
@@ -49,7 +49,7 @@ class ProtoMetricExporter(MetricExporter):
     Implementation of the MetricExporter interface for exporting metrics.
 
     This implementation writes serialized
-    opentelemetry.proto.metrics.v1.metrics_pb2.MetricsData protobuf messages
+    snowflake.telemetry.proto.metrics.v1.metrics_pb2.MetricsData protobuf messages
     according to the implementation you provide to the MetricWriter abstract
     base class above.
     """
