@@ -4,7 +4,7 @@
 
 import typing
 
-from snowflake.telemetry.proto.metrics.v1.metrics_pb2 import (
+from opentelemetry.proto.metrics.v1.metrics_pb2 import (
     MetricsData,
 )
 from snowflake.telemetry._internal.exporter.otlp.proto.metrics import (
