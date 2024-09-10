@@ -1,30 +1,10 @@
+import sys
 import struct
 import dataclasses
 from abc import ABC
 from io import BytesIO
 from enum import IntEnum
-from sys import byteorder
-from typing import Optional, Any, Callable, ClassVar, Dict, IO
-
-# overwrite enum
-Enum = IntEnum
-
-# https://protobuf.dev/programming-guides/encoding/#structure
-class WireType(IntEnum):
-    VARINT = 0
-    I64 = 1
-    LEN = 2
-    I32 = 5
-
-"""
-Dataclass holding information on how to serialize a protobuf field
-based on its type
-"""
-@dataclasses.dataclass
-class TypeDescriptor:
-    wire_type: 'WireType'
-    write: Callable[[Any, IO], None]
-    packed: bool = False # efficiently encoded when it is a repeated field
+from typing import Optional, Any, Callable, ClassVar, Dict, IO, Type, get_type_hints
 
 def write_varint_unsigned(value: int, io: IO) -> None:
     while value > 0x7F:
@@ -37,8 +17,8 @@ def write_varint_zigzag(value: int, io: IO) -> None:
 
 def write_varint_twoscompliment(value: int, io: IO) -> None:
     compliment = int.from_bytes(
-        value.to_bytes(8, byteorder, signed=True),
-        byteorder,
+        value.to_bytes(8, sys.byteorder, signed=True),
+        sys.byteorder,
         signed=False,
     )
     write_varint_unsigned(compliment, io)
@@ -63,13 +43,33 @@ def write_bytes(value: bytes, io: IO) -> None:
     write_varint_unsigned(len(value), io)
     io.write(value)
 
-def write_message(value: "BaseMessage", io: IO) -> None:
+def write_message(value: "Message", io: IO) -> None:
     with BytesIO() as tmp_io:
         value.write_to(tmp_io)
         write_bytes(tmp_io.getvalue(), io)
 
 def write_map(value: Any, io: IO) -> None:
     raise NotImplementedError("Map serialization is not implemented")
+
+# overwrite enum
+Enum = IntEnum
+
+# https://protobuf.dev/programming-guides/encoding/#structure
+class WireType(IntEnum):
+    VARINT = 0
+    I64 = 1
+    LEN = 2
+    I32 = 5
+
+"""
+Dataclass holding information on how to serialize a protobuf field
+based on its type
+"""
+@dataclasses.dataclass
+class TypeDescriptor:
+    wire_type: 'WireType'
+    write: Callable[[Any, IO], None]
+    packed: bool = False # efficiently encoded when it is a repeated field
 
 TYPE_ENUM = TypeDescriptor(WireType.VARINT, write_enum, packed=True)
 
@@ -121,13 +121,17 @@ class FieldMetaData:
     def get(field: dataclasses.field) -> "FieldMetaData":
         return field.metadata["magic"]
 
+PLACEHOLDER = object()
 def dataclass_field(
     number: int, 
     proto_type: TypeDescriptor, 
     group: Optional[str] = None, 
     optional: bool = False
 ) -> dataclasses.field:
-    return dataclasses.field(metadata={"magic": FieldMetaData(number, proto_type, group, optional)})
+    return dataclasses.field(
+        default=None if optional else PLACEHOLDER,
+        metadata={"magic": FieldMetaData(number, proto_type, group, optional)}
+    )
 
 def enum_field(number: int, group: Optional[str] = None, optional: bool = False) -> Any:
     return dataclass_field(number, TYPE_ENUM, group=group, optional=optional)
@@ -188,17 +192,43 @@ def write_tag(number: int, wire_type: WireType, io: IO) -> None:
 Abstract class for protobuf messages.
 All protobuf message objects should inherit from this class.
 """
-class BaseMessage(ABC):
+class Message(ABC):
     __PROTOBUF_FIELDS_BY_NUMBER__: ClassVar[Dict[int, FieldMetaData]]
     __PROTOBUF_FIELDS_BY_NAME__: ClassVar[Dict[str, FieldMetaData]]
+    __DEFAULT_VALUE_GEN_BY_NAME__: ClassVar[Dict[str, Callable[[], Any]]]
 
-    def __init_subclass__(cls) -> None:
-        cls.__PROTOBUF_FIELDS_BY_NUMBER__ = {}
-        cls.__PROTOBUF_FIELDS_BY_NAME__ = {}
-        for field in dataclasses.fields(cls):
+    @classmethod
+    def _type_hint(cls, name: str) -> Type:
+        return cls._type_hints()[name]
+
+    @classmethod
+    def _type_hints(cls) -> Dict[str, Type]:
+        module = sys.modules[cls.__module__]
+        return get_type_hints(cls, module.__dict__, {})
+
+    def __post_init__(self) -> None:
+        self.__PROTOBUF_FIELDS_BY_NUMBER__ = {}
+        self.__PROTOBUF_FIELDS_BY_NAME__ = {}
+        self.__DEFAULT_VALUE_GEN_BY_NAME__ = {}
+        for field in dataclasses.fields(self):
             meta = FieldMetaData.get(field)
-            cls.__PROTOBUF_FIELDS_BY_NUMBER__[meta.number] = (field.name, meta)
-            cls.__PROTOBUF_FIELDS_BY_NAME__[field.name] = meta
+            self.__PROTOBUF_FIELDS_BY_NUMBER__[meta.number] = (field.name, meta)
+            self.__PROTOBUF_FIELDS_BY_NAME__[field.name] = meta
+
+            # https://protobuf.dev/programming-guides/proto3/#default
+            type = self._type_hint(field.name)
+            if hasattr(type, "__origin__") and type.__origin__ is list:
+                # empty list for repeated fields
+                self.__DEFAULT_VALUE_GEN_BY_NAME__[field.name] = list
+            elif hasattr(type, "__origin__") and type.__origin__ is dict:
+                # empty dict for map fields
+                self.__DEFAULT_VALUE_GEN_BY_NAME__[field.name] = dict
+            elif issubclass(type, Enum):
+                # enums default to 0 enumeral value
+                self.__DEFAULT_VALUE_GEN_BY_NAME__[field.name] = type._value2member_map_[0]
+            else:
+                # primitive scalar or another message, default to zero value
+                self.__DEFAULT_VALUE_GEN_BY_NAME__[field.name] = type
     
     # Write serialized protobuf message to io stream
     def write_to(self, io: IO) -> None:
@@ -233,3 +263,17 @@ class BaseMessage(ABC):
     # Alias for bytes(self)
     def SerializeToString(self) -> bytes:
         return bytes(self)
+
+    def __getattribute__(self, name: str) -> Any:
+        """
+        Lazy initialization of fields default values to prevent infinite recursion 
+        from messages with itself as a field
+        """
+        value = super().__getattribute__(name)
+        if value is not PLACEHOLDER:
+            return value
+        
+        default_value_gen = super().__getattribute__("__DEFAULT_VALUE_GEN_BY_NAME__")[name]
+        value = default_value_gen()
+        setattr(self, name, value)
+        return value
