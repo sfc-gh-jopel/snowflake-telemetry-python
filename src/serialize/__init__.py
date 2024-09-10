@@ -244,12 +244,13 @@ class Message(ABC):
                 self.__DEFAULT_VALUE_GEN_BY_NAME__[field.name] = dict
             elif issubclass(type, Enum):
                 # enums default to 0 enumeral value
-                self.__DEFAULT_VALUE_GEN_BY_NAME__[field.name] = type._value2member_map_[0]
+                self.__DEFAULT_VALUE_GEN_BY_NAME__[field.name] = lambda type=type: type._value2member_map_[0]
             elif issubclass(type, Message):
                 # default to None for message fields
                 self.__DEFAULT_VALUE_GEN_BY_NAME__[field.name] = lambda: None
             else:
                 # primitive scalar, default to zero value
+                # str, bytes, float, int, bool
                 self.__DEFAULT_VALUE_GEN_BY_NAME__[field.name] = type
     
     # Write serialized protobuf message to io stream
@@ -260,6 +261,12 @@ class Message(ABC):
             except AttributeError:
                 continue
             if value is None:
+                continue
+
+            # https://protobuf.dev/programming-guides/proto3/#default
+            # if the value is the default value for the field, skip it
+            default_value = self.__DEFAULT_VALUE_GEN_BY_NAME__[name]()
+            if value == default_value:
                 continue
 
             # repeated fields
