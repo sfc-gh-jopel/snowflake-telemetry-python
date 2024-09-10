@@ -216,7 +216,7 @@ class Message(ABC):
     @classmethod
     def _type_hints(cls) -> Dict[str, Type]:
         module = sys.modules[cls.__module__]
-        return get_type_hints(cls, module.__dict__, {})
+        return get_type_hints(cls, module.__dict__)
 
     def __post_init__(self) -> None:
         self.__PROTOBUF_FIELDS_BY_NUMBER__ = {}
@@ -245,21 +245,16 @@ class Message(ABC):
             elif issubclass(type, Enum):
                 # enums default to 0 enumeral value
                 self.__DEFAULT_VALUE_GEN_BY_NAME__[field.name] = lambda type=type: type._value2member_map_[0]
-            elif issubclass(type, Message):
-                # default to None for message fields
-                self.__DEFAULT_VALUE_GEN_BY_NAME__[field.name] = lambda: None
             else:
                 # primitive scalar, default to zero value
                 # str, bytes, float, int, bool
+                # also message field default to empty object
                 self.__DEFAULT_VALUE_GEN_BY_NAME__[field.name] = type
     
     # Write serialized protobuf message to io stream
     def write_to(self, io: IO) -> None:
         for _, (name, meta) in self.__PROTOBUF_FIELDS_BY_NUMBER__.items():
-            try:
-                value = getattr(self, name)
-            except AttributeError:
-                continue
+            value = getattr(self, name)
             if value is None:
                 continue
 
@@ -296,11 +291,34 @@ class Message(ABC):
     # Alias for bytes(self)
     def SerializeToString(self) -> bytes:
         return bytes(self)
+    
+    # This module does not support parsing from bytes.
+    # It is intended to be used for serialization only.
+    def ParseFromString(self, serialized: bytes) -> None:
+        raise NotImplementedError("ParseFromString not implemented")
+    
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, Message):
+            return NotImplemented
+        
+        for field_name in self.__PROTOBUF_FIELDS_BY_NAME__:
+            self_val = self._raw_get(field_name)
+            other_val = other._raw_get(field_name)
 
+            if self_val == PLACEHOLDER and other_val == PLACEHOLDER:
+                continue
+            elif self_val == PLACEHOLDER:
+                self_val = self.__DEFAULT_VALUE_GEN_BY_NAME__[field_name]()
+            elif other_val == PLACEHOLDER:  
+                other_val = self.__DEFAULT_VALUE_GEN_BY_NAME__[field_name]()
+            
+            if self_val != other_val:
+                return False
+        return True
+    
     def __getattribute__(self, name: str) -> Any:
         """
-        Lazy initialization of fields default values
-        Raise :class:`AttributeError` if a field in a group is already set
+        Lazy initialization of fields default values, prevents infinite recursion from recursive message fields
         """
         value = super().__getattribute__(name)
         if value is not PLACEHOLDER:
@@ -310,7 +328,8 @@ class Message(ABC):
         if meta.group:
             current_value = super().__getattribute__("__CURRENT_VALUE_BY_GROUP_NAME__").get(meta.group)
             if current_value and current_value != name:
-                raise AttributeError(f"Only one field in group '{meta.group}' can be set")
+                # Only one field in a group can be set
+                return None
         
         default_value_gen = super().__getattribute__("__DEFAULT_VALUE_GEN_BY_NAME__")[name]
         value = default_value_gen()
