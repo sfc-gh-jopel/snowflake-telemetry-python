@@ -75,8 +75,6 @@ def _encode_value(value: Any) -> PB2AnyValue:
         return PB2AnyValue(int_value=value)
     if isinstance(value, float):
         return PB2AnyValue(double_value=value)
-    if isinstance(value, bytes):
-        return PB2AnyValue(bytes_value=value)
     if isinstance(value, Sequence):
         return PB2AnyValue(
             array_value=PB2ArrayValue(values=[_encode_value(v) for v in value])
@@ -108,11 +106,10 @@ def _encode_attributes(
     if attributes:
         pb2_attributes = []
         for key, value in attributes.items():
-            # pylint: disable=broad-exception-caught
             try:
                 pb2_attributes.append(_encode_key_value(key, value))
-            except Exception as error:
-                _logger.exception("Failed to encode key %s: %s", key, error)
+            except Exception as error:  # pylint: disable=broad-except
+                _logger.exception(error)
     else:
         pb2_attributes = None
     return pb2_attributes
