@@ -7,13 +7,21 @@ from enum import IntEnum
 from typing import Optional, Any, Callable, ClassVar, Dict, IO, Type, get_type_hints
 
 def write_varint_unsigned(value: int, io: IO) -> None:
-    while value > 0x7F:
-        io.write(bytes((value & 0x7F | 0x80,)))
+    if value < -(1 << 63):
+        raise ValueError("Unable to encode vairnt within 10 bytes")
+    elif value < 0:
+        value += 1 << 64
+
+    bits = value & 0x7F
+    value >>= 7
+    while value:
+        io.write((0x80 | bits).to_bytes(1, "little"))
+        bits = value & 0x7F
         value >>= 7
-    io.write(bytes((value,)))
+    io.write(bits.to_bytes(1, "little"))
 
 def write_varint_zigzag(value: int, io: IO) -> None:
-    write_varint_unsigned(abs(value) * 2 - (value < 0), io)
+    write_varint_unsigned(value << 1 if value >= 0 else (value << 1) ^ (~0), io)
 
 def write_varint_twoscompliment(value: int, io: IO) -> None:
     compliment = int.from_bytes(
@@ -27,7 +35,10 @@ def write_bool(value: bool, io: IO) -> None:
     write_varint_unsigned(int(value), io)
 
 def write_enum(value: Any, io: IO) -> None:
-    write_varint_unsigned(value.value, io)
+    if isinstance(value, int):
+        write_varint_unsigned(value, io)
+    else:
+        write_varint_unsigned(value.value, io)
 
 class WriteStruct:
     def __init__(self, fmt) -> None:
@@ -196,6 +207,7 @@ class Message(ABC):
     __PROTOBUF_FIELDS_BY_NUMBER__: ClassVar[Dict[int, FieldMetaData]]
     __PROTOBUF_FIELDS_BY_NAME__: ClassVar[Dict[str, FieldMetaData]]
     __DEFAULT_VALUE_GEN_BY_NAME__: ClassVar[Dict[str, Callable[[], Any]]]
+    __CURRENT_VALUE_BY_GROUP_NAME__: ClassVar[Dict[str, str]]
 
     @classmethod
     def _type_hint(cls, name: str) -> Type:
@@ -210,10 +222,17 @@ class Message(ABC):
         self.__PROTOBUF_FIELDS_BY_NUMBER__ = {}
         self.__PROTOBUF_FIELDS_BY_NAME__ = {}
         self.__DEFAULT_VALUE_GEN_BY_NAME__ = {}
+        self.__CURRENT_VALUE_BY_GROUP_NAME__ = {}
         for field in dataclasses.fields(self):
             meta = FieldMetaData.get(field)
             self.__PROTOBUF_FIELDS_BY_NUMBER__[meta.number] = (field.name, meta)
             self.__PROTOBUF_FIELDS_BY_NAME__[field.name] = meta
+
+            # Keep track of which value is set for oneof fields
+            value = self._raw_get(field.name)
+            if value is not PLACEHOLDER or (not meta.optional and value is None):
+                if meta.group:
+                    self.__CURRENT_VALUE_BY_GROUP_NAME__[meta.group] = field.name
 
             # https://protobuf.dev/programming-guides/proto3/#default
             type = self._type_hint(field.name)
@@ -226,29 +245,36 @@ class Message(ABC):
             elif issubclass(type, Enum):
                 # enums default to 0 enumeral value
                 self.__DEFAULT_VALUE_GEN_BY_NAME__[field.name] = type._value2member_map_[0]
+            elif issubclass(type, Message):
+                # default to None for message fields
+                self.__DEFAULT_VALUE_GEN_BY_NAME__[field.name] = lambda: None
             else:
-                # primitive scalar or another message, default to zero value
+                # primitive scalar, default to zero value
                 self.__DEFAULT_VALUE_GEN_BY_NAME__[field.name] = type
     
     # Write serialized protobuf message to io stream
     def write_to(self, io: IO) -> None:
         for _, (name, meta) in self.__PROTOBUF_FIELDS_BY_NUMBER__.items():
-            value = getattr(self, name)
+            try:
+                value = getattr(self, name)
+            except AttributeError:
+                continue
+            if value is None:
+                continue
+
             # repeated fields
             if isinstance(value, list):
-                if meta.packed:
+                if meta.proto_type.packed:
                     # packed repeated fields are untagged and treated as a byte array
-                    with BytesIO as buf:
+                    with BytesIO() as buf:
                         for item in value:
                             meta.proto_type.write(item, buf)
                         write_bytes(buf.getvalue(), io)
                 else:
                     # unpacked repeated fields are each individually tagged
-                    with BytesIO as buf:
-                        for item in value:
-                            write_tag(meta.number, meta.proto_type.wire_type, buf)
-                            meta.proto_type.write(item, buf)
-                        io.write(buf.getvalue())
+                    for item in value:
+                        write_tag(meta.number, meta.proto_type.wire_type, io)
+                        meta.proto_type.write(item, io)
             else:
                 write_tag(meta.number, meta.proto_type.wire_type, io)
                 meta.proto_type.write(value, io)
@@ -266,14 +292,23 @@ class Message(ABC):
 
     def __getattribute__(self, name: str) -> Any:
         """
-        Lazy initialization of fields default values to prevent infinite recursion 
-        from messages with itself as a field
+        Lazy initialization of fields default values
+        Raise :class:`AttributeError` if a field in a group is already set
         """
         value = super().__getattribute__(name)
         if value is not PLACEHOLDER:
             return value
         
+        meta = super().__getattribute__("__PROTOBUF_FIELDS_BY_NAME__")[name]
+        if meta.group:
+            current_value = super().__getattribute__("__CURRENT_VALUE_BY_GROUP_NAME__").get(meta.group)
+            if current_value and current_value != name:
+                raise AttributeError(f"Only one field in group '{meta.group}' can be set")
+        
         default_value_gen = super().__getattribute__("__DEFAULT_VALUE_GEN_BY_NAME__")[name]
         value = default_value_gen()
         setattr(self, name, value)
         return value
+    
+    def _raw_get(self, name: str) -> Any:
+        return super().__getattribute__(name)
