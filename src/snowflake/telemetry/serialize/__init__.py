@@ -14,76 +14,100 @@ class MessageMarshaler:
         ...
 
 class ProtoSerializer:
-    __slots__ = ("out",)
+    __slots__ = ("out","buf","i")
 
     def __init__(self) -> None:
-        self.out = bytearray()
+        self.out = bytearray(1024)
+        self.buf = memoryview(self.out)
+        self.i = 1024
     
     def __bytes__(self) -> bytes:
-        return bytes(self.out)[::-1]
+        return bytes(self.out[self.i:])
     
     def serialize_bool(self, tag: bytes, value: bool) -> None:
-        _write_varint_unsigned(1 if value else 0, self.out)
-        self.out.extend(tag[::-1])
+        self._write_varint_unsigned(1 if value else 0)
+        self.buf[self.i-len(tag):self.i] = tag
+        self.i -= len(tag)
     
     def serialize_enum(self, tag: bytes, value: Union[Enum, int]) -> None:
         if not isinstance(value, int):
             value = value.value
-        _write_varint_unsigned(value, self.out)
-        self.out.extend(tag[::-1])
+        self._write_varint_unsigned(value)
+        self.buf[self.i-len(tag):self.i] = tag
+        self.i -= len(tag)
     
     def serialize_uint32(self, tag: bytes, value: int) -> None:
-        _write_varint_unsigned(value, self.out)
-        self.out.extend(tag[::-1])
+        self._write_varint_unsigned(value)
+        self.buf[self.i-len(tag):self.i] = tag
+        self.i -= len(tag)
     
     def serialize_uint64(self, tag: bytes, value: int) -> None:
-        _write_varint_unsigned(value, self.out)
-        self.out.extend(tag[::-1])
+        self._write_varint_unsigned(value)
+        self.buf[self.i-len(tag):self.i] = tag
+        self.i -= len(tag)
     
     def serialize_sint32(self, tag: bytes, value: int) -> None:
-        _write_varint_unsigned(encode_zigzag32(value), self.out)
-        self.out.extend(tag[::-1])
+        self._write_varint_unsigned(encode_zigzag32(value))
+        self.buf[self.i-len(tag):self.i] = tag
+        self.i -= len(tag)
     
     def serialize_sint64(self, tag: bytes, value: int) -> None:
-        _write_varint_unsigned(encode_zigzag64(value), self.out)
-        self.out.extend(tag[::-1])
+        self._write_varint_unsigned(encode_zigzag64(value))
+        self.buf[self.i-len(tag):self.i] = tag
+        self.i -= len(tag)
     
     def serialize_int32(self, tag: bytes, value: int) -> None:
-        _write_varint_signed(value, self.out)
-        self.out.extend(tag[::-1])
+        self._write_varint_signed(value)
+        self.buf[self.i-len(tag):self.i] = tag
+        self.i -= len(tag)
     
     def serialize_int64(self, tag: bytes, value: int) -> None:
-        _write_varint_signed(value, self.out)
-        self.out.extend(tag[::-1])
+        self._write_varint_signed(value)
+        self.buf[self.i-len(tag):self.i] = tag
+        self.i -= len(tag)
     
     def serialize_fixed32(self, tag: bytes, value: int) -> None:
-        self.out.extend(struct.pack("<I", value)[::-1])
-        self.out.extend(tag[::-1])
+        self.buf[self.i-4:self.i] = struct.pack("<I", value)
+        self.i -= 4
+        self.buf[self.i-len(tag):self.i] = tag
+        self.i -= len(tag)
     
     def serialize_fixed64(self, tag: bytes, value: int) -> None:
-        self.out.extend(struct.pack("<Q", value)[::-1])
-        self.out.extend(tag[::-1])
+        self.buf[self.i-8:self.i] = struct.pack("<Q", value)
+        self.i -= 8
+        self.buf[self.i-len(tag):self.i] = tag
+        self.i -= len(tag)
     
     def serialize_sfixed32(self, tag: bytes, value: int) -> None:
-        self.out.extend(struct.pack("<i", value)[::-1])
-        self.out.extend(tag[::-1])
+        self.buf[self.i-4:self.i] = struct.pack("<i", value)
+        self.i -= 4
+        self.buf[self.i-len(tag):self.i] = tag
+        self.i -= len(tag)
     
     def serialize_sfixed64(self, tag: bytes, value: int) -> None:
-        self.out.extend(struct.pack("<q", value)[::-1])
-        self.out.extend(tag[::-1])
+        self.buf[self.i-8:self.i] = struct.pack("<q", value)
+        self.i -= 8
+        self.buf[self.i-len(tag):self.i] = tag
+        self.i -= len(tag)
     
     def serialize_float(self, tag: bytes, value: float) -> None:
-        self.out.extend(struct.pack("<f", value)[::-1])
-        self.out.extend(tag[::-1])
+        self.buf[self.i-4:self.i] = struct.pack("<f", value)
+        self.i -= 4
+        self.buf[self.i-len(tag):self.i] = tag
+        self.i -= len(tag)
     
     def serialize_double(self, tag: bytes, value: float) -> None:
-        self.out.extend(struct.pack("<d", value)[::-1])
-        self.out.extend(tag[::-1])
+        self.buf[self.i-8:self.i] = struct.pack("<d", value)
+        self.i -= 8
+        self.buf[self.i-len(tag):self.i] = tag
+        self.i -= len(tag)
     
     def serialize_bytes(self, tag: bytes, value: bytes) -> None:
-        self.out.extend(value[::-1])
-        _write_varint_unsigned(len(value), self.out)
-        self.out.extend(tag[::-1])
+        self.buf[self.i-len(value):self.i] = value
+        self.i -= len(value)
+        self._write_varint_unsigned(len(value))
+        self.buf[self.i-len(tag):self.i] = tag
+        self.i -= len(tag)
     
     def serialize_string(self, tag: bytes, value: str) -> None:
         self.serialize_bytes(tag, value.encode("utf-8"))
@@ -99,11 +123,12 @@ class ProtoSerializer:
         # Otherwise, write the message
         # Even if all fields are default (ommnited)
         # The presence of the message is still encoded
-        before = len(self.out)
+        before = self.i
         value.write_to(self)
-        after = len(self.out)
-        _write_varint_unsigned(after - before, self.out)
-        self.out.extend(tag[::-1])
+        after = self.i
+        self._write_varint_unsigned(before - after)
+        self.buf[self.i-len(tag):self.i] = tag
+        self.i -= len(tag)
 
     def serialize_repeated_message(
             self, 
@@ -128,42 +153,52 @@ class ProtoSerializer:
         # Packed repeated fields are encoded like a bytearray
         # with a total size prefix and a single tag
         # (similar to a bytes field)
-        before = len(self.out)
+        before = self.i
         for value in reversed(values):
-            write_value(value, self.out)
-        after = len(self.out)
-        _write_varint_unsigned(after - before, self.out)
-        self.out.extend(tag[::-1])
+            write_value(value)
+        after = self.i
+        self._write_varint_unsigned(before - after)
+        self.buf[self.i-len(tag):self.i] = tag
+        self.i -= len(tag)
     
     def serialize_repeated_double(self, tag: bytes, values: List[float]) -> None:
-        self.serialize_repeated_packed(tag, values, write_double_no_tag)
+        self.serialize_repeated_packed(tag, values, self.write_double_no_tag)
     
     def serialize_repeated_fixed64(self, tag: bytes, values: List[int]) -> None:
-        self.serialize_repeated_packed(tag, values, write_fixed64_no_tag)
+        self.serialize_repeated_packed(tag, values, self.write_fixed64_no_tag)
     
     def serialize_repeated_uint64(self, tag: bytes, values: List[int]) -> None:
-        self.serialize_repeated_packed(tag, values, _write_varint_unsigned)
+        self.serialize_repeated_packed(tag, values, self._write_varint_unsigned)
 
-def _write_varint_signed(value: int, out: bytearray) -> None:
-    if value < 0:
-        value += 1 << 64
-    _write_varint_unsigned(value, out)
+    def _write_varint_signed(self, value: int) -> None:
+        if value < 0:
+            value += 1 << 64
+        self._write_varint_unsigned(value)
 
-def _write_varint_unsigned(value: int, out: bytearray) -> None:
-    i = len(out)
+    def _write_varint_unsigned(self, value: int) -> None:
+        l = size_varint(value)
+        j = self.i - l
+        while value >= 128:
+            self.buf[j] = (value & 0x7F) | 0x80
+            j += 1
+            value >>= 7
+        self.buf[j] = value
+        self.i -= l
+
+    def write_double_no_tag(self, value: float) -> None:
+        self.buf[self.i-8:self.i] = struct.pack("<d", value)
+        self.i -= 8
+
+    def write_fixed64_no_tag(self, value: int) -> None:
+        self.buf[self.i-8:self.i] = struct.pack("<Q", value)
+        self.i -= 8
+
+def size_varint(value: int) -> int:
+    size = 1
     while value >= 128:
-        out.insert(i, (value & 0x7F) | 0x80)
+        size += 1
         value >>= 7
-    out.insert(i, value)
-
-def write_tag(tag: bytes, out: bytearray) -> None:
-    out.extend(tag[::-1])
-
-def write_double_no_tag(value: float, out: bytearray) -> None:
-    out.extend(struct.pack("<d", value)[::-1])
-
-def write_fixed64_no_tag(value: int, out: bytearray) -> None:
-    out.extend(struct.pack("<Q", value)[::-1])
+    return size
 
 def encode_zigzag32(value: int) -> int:
     return value << 1 if value >= 0 else (value << 1) ^ (~0)
