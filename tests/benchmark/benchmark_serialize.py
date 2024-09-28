@@ -330,15 +330,27 @@ def test_bm_pb2_serialize_traces_data(state):
         pb2_encode_spans(traces_data).SerializeToString()
 
 """
+Before:
 -----------------------------------------------------------------------------
 Benchmark                                   Time             CPU   Iterations
 -----------------------------------------------------------------------------
-test_bm_serialize_logs_data             43847 ns        43847 ns        15571
-test_bm_pb2_serialize_logs_data         43450 ns        43450 ns        16097
-test_bm_serialize_metrics_data          13299 ns        13299 ns        52040
-test_bm_pb2_serialize_metrics_data      13465 ns        13465 ns        53244
-test_bm_serialize_traces_data           56274 ns        56274 ns        12254
-test_bm_pb2_serialize_traces_data       60691 ns        60687 ns        11751
+test_bm_serialize_logs_data             99991 ns        99984 ns         6996
+test_bm_pb2_serialize_logs_data         96017 ns        96014 ns         7228
+test_bm_serialize_metrics_data          31274 ns        31273 ns        22353
+test_bm_pb2_serialize_metrics_data      30638 ns        30637 ns        22800
+test_bm_serialize_traces_data          122269 ns       122135 ns         5667
+test_bm_pb2_serialize_traces_data      130303 ns       130284 ns         5358
+
+After:
+-----------------------------------------------------------------------------
+Benchmark                                   Time             CPU   Iterations
+-----------------------------------------------------------------------------
+test_bm_serialize_logs_data            110767 ns       110759 ns         6323
+test_bm_pb2_serialize_logs_data         96177 ns        96174 ns         7276
+test_bm_serialize_metrics_data          36253 ns        36251 ns        19307
+test_bm_pb2_serialize_metrics_data      30828 ns        30827 ns        22629
+test_bm_serialize_traces_data          133631 ns       133626 ns         5183
+test_bm_pb2_serialize_traces_data      129819 ns       129812 ns         5397
 """
 
 if __name__ == "__main__":
