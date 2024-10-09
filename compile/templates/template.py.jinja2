@@ -6,6 +6,7 @@ from snowflake.telemetry.serialize import (
     Enum,
     ProtoSerializer,
     MessageMarshaler,
+    util,
 )
 from typing import List
 
@@ -20,9 +21,9 @@ class {{ enum.name }}(Enum):
 class {{ message.name }}(MessageMarshaler):
     def __init__(
         self,
-{% for field in message.fields|reverse %}
+{% for field in message.fields %}
 {% if field.fields is defined %}
-{% for oneof_field in field.fields|reverse %}
+{% for oneof_field in field.fields %}
         {{ oneof_field.name }}: {{ oneof_field.python_type }} = {{ oneof_field.default }},
 {% endfor %}
 {% else %}
@@ -30,15 +31,16 @@ class {{ message.name }}(MessageMarshaler):
 {% endif %}
 {% endfor %}
     ):
-{%- for field in message.fields|reverse %}
+{%- for field in message.fields %}
 {%- if field.fields is defined %}
-{%- for oneof_field in field.fields|reverse %}
+{%- for oneof_field in field.fields %}
         self.{{ oneof_field.name }} = {{ oneof_field.name }}
 {%- endfor %}
 {%- else %}
         self.{{ field.name }} = {{ field.name }}
 {%- endif %}
 {%- endfor %}
+        super().__init__(self.calculate_size())
     
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
 {%- for field in message.fields %}
@@ -52,6 +54,21 @@ class {{ message.name }}(MessageMarshaler):
         if self.{{ field.name }}: proto_serializer.serialize_{{ field.proto_type }}({{ field.tag }}, self.{{ field.name }})
 {%- endif %}
 {%- endfor %}
+
+    def calculate_size(self) -> int:
+        size = 0
+{%- for field in message.fields %}
+{%- if field.fields is defined %}
+{%- for oneof_field in field.fields %}
+        if self.{{ oneof_field.name }} is not None:
+            size += util.size_{{ oneof_field.proto_type }}({{ oneof_field.tag }}, self.{{ oneof_field.name }})
+{%- endfor %}
+{%- else %}
+        if self.{{ field.name }}: 
+            size += util.size_{{ field.proto_type }}({{ field.tag }}, self.{{ field.name }})
+{%- endif %}
+{%- endfor %}
+        return size
 
 {% for nested_enum in message.enums %}
     class {{ nested_enum.name }}(Enum):

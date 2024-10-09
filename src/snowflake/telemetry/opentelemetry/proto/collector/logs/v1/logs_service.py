@@ -8,6 +8,7 @@ from snowflake.telemetry.serialize import (
     Enum,
     MessageMarshaler,
     ProtoSerializer,
+    util,
 )
 
 
@@ -17,10 +18,17 @@ class ExportLogsServiceRequest(MessageMarshaler):
         resource_logs: List[MessageMarshaler] = None,
     ):
         self.resource_logs = resource_logs
+        super().__init__(self.calculate_size())
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.resource_logs:
             proto_serializer.serialize_repeated_message(b"\n", self.resource_logs)
+
+    def calculate_size(self) -> int:
+        size = 0
+        if self.resource_logs:
+            size += util.size_repeated_message(b"\n", self.resource_logs)
+        return size
 
 
 class ExportLogsServiceResponse(MessageMarshaler):
@@ -29,10 +37,17 @@ class ExportLogsServiceResponse(MessageMarshaler):
         partial_success: MessageMarshaler = None,
     ):
         self.partial_success = partial_success
+        super().__init__(self.calculate_size())
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.partial_success:
             proto_serializer.serialize_message(b"\n", self.partial_success)
+
+    def calculate_size(self) -> int:
+        size = 0
+        if self.partial_success:
+            size += util.size_message(b"\n", self.partial_success)
+        return size
 
 
 class ExportLogsPartialSuccess(MessageMarshaler):
@@ -43,9 +58,18 @@ class ExportLogsPartialSuccess(MessageMarshaler):
     ):
         self.rejected_log_records = rejected_log_records
         self.error_message = error_message
+        super().__init__(self.calculate_size())
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.error_message:
-            proto_serializer.serialize_string(b"\x12", self.error_message)
         if self.rejected_log_records:
             proto_serializer.serialize_int64(b"\x08", self.rejected_log_records)
+        if self.error_message:
+            proto_serializer.serialize_string(b"\x12", self.error_message)
+
+    def calculate_size(self) -> int:
+        size = 0
+        if self.rejected_log_records:
+            size += util.size_int64(b"\x08", self.rejected_log_records)
+        if self.error_message:
+            size += util.size_string(b"\x12", self.error_message)
+        return size

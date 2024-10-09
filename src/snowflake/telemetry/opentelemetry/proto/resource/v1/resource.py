@@ -8,6 +8,7 @@ from snowflake.telemetry.serialize import (
     Enum,
     MessageMarshaler,
     ProtoSerializer,
+    util,
 )
 
 
@@ -19,9 +20,18 @@ class Resource(MessageMarshaler):
     ):
         self.attributes = attributes
         self.dropped_attributes_count = dropped_attributes_count
+        super().__init__(self.calculate_size())
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.dropped_attributes_count:
-            proto_serializer.serialize_uint32(b"\x10", self.dropped_attributes_count)
         if self.attributes:
             proto_serializer.serialize_repeated_message(b"\n", self.attributes)
+        if self.dropped_attributes_count:
+            proto_serializer.serialize_uint32(b"\x10", self.dropped_attributes_count)
+
+    def calculate_size(self) -> int:
+        size = 0
+        if self.attributes:
+            size += util.size_repeated_message(b"\n", self.attributes)
+        if self.dropped_attributes_count:
+            size += util.size_uint32(b"\x10", self.dropped_attributes_count)
+        return size

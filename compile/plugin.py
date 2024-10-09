@@ -179,7 +179,7 @@ class MessageTemplate:
             if isinstance(field, FieldTemplate):
                 return field.number
             return field.fields[0].number
-        fields.sort(key=sort_key, reverse=True)
+        fields.sort(key=sort_key)
         
         return MessageTemplate(
             name=descriptor.name,

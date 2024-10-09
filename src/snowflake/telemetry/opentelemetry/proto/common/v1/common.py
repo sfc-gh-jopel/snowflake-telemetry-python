@@ -8,27 +8,29 @@ from snowflake.telemetry.serialize import (
     Enum,
     MessageMarshaler,
     ProtoSerializer,
+    util,
 )
 
 
 class AnyValue(MessageMarshaler):
     def __init__(
         self,
-        string_value: str = None,
-        bool_value: bool = None,
-        int_value: int = None,
-        double_value: float = None,
-        array_value: MessageMarshaler = None,
-        kvlist_value: MessageMarshaler = None,
         bytes_value: bytes = None,
+        kvlist_value: MessageMarshaler = None,
+        array_value: MessageMarshaler = None,
+        double_value: float = None,
+        int_value: int = None,
+        bool_value: bool = None,
+        string_value: str = None,
     ):
-        self.string_value = string_value
-        self.bool_value = bool_value
-        self.int_value = int_value
-        self.double_value = double_value
-        self.array_value = array_value
-        self.kvlist_value = kvlist_value
         self.bytes_value = bytes_value
+        self.kvlist_value = kvlist_value
+        self.array_value = array_value
+        self.double_value = double_value
+        self.int_value = int_value
+        self.bool_value = bool_value
+        self.string_value = string_value
+        super().__init__(self.calculate_size())
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         # oneof group value
@@ -47,6 +49,24 @@ class AnyValue(MessageMarshaler):
         elif self.string_value is not None:
             proto_serializer.serialize_string(b"\n", self.string_value)
 
+    def calculate_size(self) -> int:
+        size = 0
+        if self.bytes_value is not None:
+            size += util.size_bytes(b":", self.bytes_value)
+        if self.kvlist_value is not None:
+            size += util.size_message(b"2", self.kvlist_value)
+        if self.array_value is not None:
+            size += util.size_message(b"*", self.array_value)
+        if self.double_value is not None:
+            size += util.size_double(b"!", self.double_value)
+        if self.int_value is not None:
+            size += util.size_int64(b"\x18", self.int_value)
+        if self.bool_value is not None:
+            size += util.size_bool(b"\x10", self.bool_value)
+        if self.string_value is not None:
+            size += util.size_string(b"\n", self.string_value)
+        return size
+
 
 class ArrayValue(MessageMarshaler):
     def __init__(
@@ -54,10 +74,17 @@ class ArrayValue(MessageMarshaler):
         values: List[MessageMarshaler] = None,
     ):
         self.values = values
+        super().__init__(self.calculate_size())
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.values:
             proto_serializer.serialize_repeated_message(b"\n", self.values)
+
+    def calculate_size(self) -> int:
+        size = 0
+        if self.values:
+            size += util.size_repeated_message(b"\n", self.values)
+        return size
 
 
 class KeyValueList(MessageMarshaler):
@@ -66,10 +93,17 @@ class KeyValueList(MessageMarshaler):
         values: List[MessageMarshaler] = None,
     ):
         self.values = values
+        super().__init__(self.calculate_size())
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.values:
             proto_serializer.serialize_repeated_message(b"\n", self.values)
+
+    def calculate_size(self) -> int:
+        size = 0
+        if self.values:
+            size += util.size_repeated_message(b"\n", self.values)
+        return size
 
 
 class KeyValue(MessageMarshaler):
@@ -80,12 +114,21 @@ class KeyValue(MessageMarshaler):
     ):
         self.key = key
         self.value = value
+        super().__init__(self.calculate_size())
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.value:
-            proto_serializer.serialize_message(b"\x12", self.value)
         if self.key:
             proto_serializer.serialize_string(b"\n", self.key)
+        if self.value:
+            proto_serializer.serialize_message(b"\x12", self.value)
+
+    def calculate_size(self) -> int:
+        size = 0
+        if self.key:
+            size += util.size_string(b"\n", self.key)
+        if self.value:
+            size += util.size_message(b"\x12", self.value)
+        return size
 
 
 class InstrumentationScope(MessageMarshaler):
@@ -100,13 +143,26 @@ class InstrumentationScope(MessageMarshaler):
         self.version = version
         self.attributes = attributes
         self.dropped_attributes_count = dropped_attributes_count
+        super().__init__(self.calculate_size())
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.dropped_attributes_count:
-            proto_serializer.serialize_uint32(b" ", self.dropped_attributes_count)
-        if self.attributes:
-            proto_serializer.serialize_repeated_message(b"\x1a", self.attributes)
-        if self.version:
-            proto_serializer.serialize_string(b"\x12", self.version)
         if self.name:
             proto_serializer.serialize_string(b"\n", self.name)
+        if self.version:
+            proto_serializer.serialize_string(b"\x12", self.version)
+        if self.attributes:
+            proto_serializer.serialize_repeated_message(b"\x1a", self.attributes)
+        if self.dropped_attributes_count:
+            proto_serializer.serialize_uint32(b" ", self.dropped_attributes_count)
+
+    def calculate_size(self) -> int:
+        size = 0
+        if self.name:
+            size += util.size_string(b"\n", self.name)
+        if self.version:
+            size += util.size_string(b"\x12", self.version)
+        if self.attributes:
+            size += util.size_repeated_message(b"\x1a", self.attributes)
+        if self.dropped_attributes_count:
+            size += util.size_uint32(b" ", self.dropped_attributes_count)
+        return size
