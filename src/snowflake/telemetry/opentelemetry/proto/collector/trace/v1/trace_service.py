@@ -2,71 +2,84 @@
 # sources:
 # plugin: python-serialize
 
-from typing import List
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+)
 
 from snowflake.telemetry.serialize import (
     Enum,
-    MessageMarshaler,
     ProtoSerializer,
     util,
 )
 
 
-class ExportTraceServiceRequest(MessageMarshaler):
-    def __init__(
-        self,
-        resource_spans: List[MessageMarshaler] = None,
-    ):
-        self.resource_spans = resource_spans
+def ExportTraceServiceRequest(
+    resource_spans: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    size = 0
+    if resource_spans:
+        size += util.size_repeated_message(b"\n", resource_spans)
 
-        size = 0
-        if resource_spans:
-            size += util.size_repeated_message(b"\n", resource_spans)
-
-        super().__init__(size)
-
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.resource_spans:
-            proto_serializer.serialize_repeated_message(b"\n", self.resource_spans)
+    return {
+        "__size": size,
+        "__serialize_function": write_to_ExportTraceServiceRequest,
+        "resource_spans": resource_spans,
+    }
 
 
-class ExportTraceServiceResponse(MessageMarshaler):
-    def __init__(
-        self,
-        partial_success: MessageMarshaler = None,
-    ):
-        self.partial_success = partial_success
-
-        size = 0
-        if partial_success:
-            size += util.size_message(b"\n", partial_success)
-
-        super().__init__(size)
-
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.partial_success:
-            proto_serializer.serialize_message(b"\n", self.partial_success)
+def write_to_ExportTraceServiceRequest(
+    message: Dict[str, Any], proto_serializer: ProtoSerializer
+) -> None:
+    if message["resource_spans"]:
+        proto_serializer.serialize_repeated_message(b"\n", message["resource_spans"])
 
 
-class ExportTracePartialSuccess(MessageMarshaler):
-    def __init__(
-        self,
-        rejected_spans: int = 0,
-        error_message: str = "",
-    ):
-        self.rejected_spans = rejected_spans
-        self.error_message = error_message
+def ExportTraceServiceResponse(
+    partial_success: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    size = 0
+    if partial_success:
+        size += util.size_message(b"\n", partial_success)
 
-        size = 0
-        if rejected_spans:
-            size += util.size_int64(b"\x08", rejected_spans)
-        if error_message:
-            size += util.size_string(b"\x12", error_message)
+    return {
+        "__size": size,
+        "__serialize_function": write_to_ExportTraceServiceResponse,
+        "partial_success": partial_success,
+    }
 
-        super().__init__(size)
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.rejected_spans:
-            proto_serializer.serialize_int64(b"\x08", self.rejected_spans)
-        if self.error_message:
-            proto_serializer.serialize_string(b"\x12", self.error_message)
+def write_to_ExportTraceServiceResponse(
+    message: Dict[str, Any], proto_serializer: ProtoSerializer
+) -> None:
+    if message["partial_success"]:
+        proto_serializer.serialize_message(b"\n", message["partial_success"])
+
+
+def ExportTracePartialSuccess(
+    rejected_spans: Optional[int] = None,
+    error_message: Optional[str] = None,
+) -> Dict[str, Any]:
+    size = 0
+    if rejected_spans:
+        size += util.size_int64(b"\x08", rejected_spans)
+    if error_message:
+        size += util.size_string(b"\x12", error_message)
+
+    return {
+        "__size": size,
+        "__serialize_function": write_to_ExportTracePartialSuccess,
+        "rejected_spans": rejected_spans,
+        "error_message": error_message,
+    }
+
+
+def write_to_ExportTracePartialSuccess(
+    message: Dict[str, Any], proto_serializer: ProtoSerializer
+) -> None:
+    if message["rejected_spans"]:
+        proto_serializer.serialize_int64(b"\x08", message["rejected_spans"])
+    if message["error_message"]:
+        proto_serializer.serialize_string(b"\x12", message["error_message"])

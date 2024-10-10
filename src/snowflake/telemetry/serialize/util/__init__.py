@@ -43,9 +43,9 @@ size_bytes = lambda tag, m: len(tag) + size_varint32(len(m)) + len(m)
 def size_string(tag, m):
     m = m.encode("utf-8") # TODO store this in the object, quite big speedup
     return len(tag) + size_varint32(len(m)) + len(m)
-size_message = lambda tag, m: len(tag) + size_varint32(m.size) + m.size
+size_message = lambda tag, m: len(tag) + size_varint32(m["__size"]) + m["__size"]
 
-size_repeated_message = lambda tag, messages: sum(message.size + len(tag) + size_varint32(message.size) for message in messages)
+size_repeated_message = lambda tag, messages: sum(message["__size"] + len(tag) + size_varint32(message["__size"]) for message in messages)
 size_repeated_double = lambda tag, doubles: len(tag) + len(doubles) * 8 + size_varint32(len(doubles) * 8)
 size_repeated_fixed64 = lambda tag, fixed64s: len(tag) + len(fixed64s) * 8 + size_varint32(len(fixed64s) * 8)
 def size_repeated_uint64(tag, uint32s):

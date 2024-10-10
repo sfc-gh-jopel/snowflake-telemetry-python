@@ -2,35 +2,42 @@
 # sources:
 # plugin: python-serialize
 
-from typing import List
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+)
 
 from snowflake.telemetry.serialize import (
     Enum,
-    MessageMarshaler,
     ProtoSerializer,
     util,
 )
 
 
-class Resource(MessageMarshaler):
-    def __init__(
-        self,
-        attributes: List[MessageMarshaler] = None,
-        dropped_attributes_count: int = 0,
-    ):
-        self.attributes = attributes
-        self.dropped_attributes_count = dropped_attributes_count
+def Resource(
+    attributes: Optional[List[Dict[str, Any]]] = None,
+    dropped_attributes_count: Optional[int] = None,
+) -> Dict[str, Any]:
+    size = 0
+    if attributes:
+        size += util.size_repeated_message(b"\n", attributes)
+    if dropped_attributes_count:
+        size += util.size_uint32(b"\x10", dropped_attributes_count)
 
-        size = 0
-        if attributes:
-            size += util.size_repeated_message(b"\n", attributes)
-        if dropped_attributes_count:
-            size += util.size_uint32(b"\x10", dropped_attributes_count)
+    return {
+        "__size": size,
+        "__serialize_function": write_to_Resource,
+        "attributes": attributes,
+        "dropped_attributes_count": dropped_attributes_count,
+    }
 
-        super().__init__(size)
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.attributes:
-            proto_serializer.serialize_repeated_message(b"\n", self.attributes)
-        if self.dropped_attributes_count:
-            proto_serializer.serialize_uint32(b"\x10", self.dropped_attributes_count)
+def write_to_Resource(
+    message: Dict[str, Any], proto_serializer: ProtoSerializer
+) -> None:
+    if message["attributes"]:
+        proto_serializer.serialize_repeated_message(b"\n", message["attributes"])
+    if message["dropped_attributes_count"]:
+        proto_serializer.serialize_uint32(b"\x10", message["dropped_attributes_count"])

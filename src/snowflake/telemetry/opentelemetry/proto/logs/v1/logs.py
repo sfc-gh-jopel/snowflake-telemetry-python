@@ -2,11 +2,15 @@
 # sources:
 # plugin: python-serialize
 
-from typing import List
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+)
 
 from snowflake.telemetry.serialize import (
     Enum,
-    MessageMarshaler,
     ProtoSerializer,
     util,
 )
@@ -45,151 +49,163 @@ class LogRecordFlags(Enum):
     LOG_RECORD_FLAGS_TRACE_FLAGS_MASK = 255
 
 
-class LogsData(MessageMarshaler):
-    def __init__(
-        self,
-        resource_logs: List[MessageMarshaler] = None,
-    ):
-        self.resource_logs = resource_logs
+def LogsData(
+    resource_logs: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    size = 0
+    if resource_logs:
+        size += util.size_repeated_message(b"\n", resource_logs)
 
-        size = 0
-        if resource_logs:
-            size += util.size_repeated_message(b"\n", resource_logs)
-
-        super().__init__(size)
-
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.resource_logs:
-            proto_serializer.serialize_repeated_message(b"\n", self.resource_logs)
+    return {
+        "__size": size,
+        "__serialize_function": write_to_LogsData,
+        "resource_logs": resource_logs,
+    }
 
 
-class ResourceLogs(MessageMarshaler):
-    def __init__(
-        self,
-        resource: MessageMarshaler = None,
-        scope_logs: List[MessageMarshaler] = None,
-        schema_url: str = "",
-    ):
-        self.resource = resource
-        self.scope_logs = scope_logs
-        self.schema_url = schema_url
-
-        size = 0
-        if resource:
-            size += util.size_message(b"\n", resource)
-        if scope_logs:
-            size += util.size_repeated_message(b"\x12", scope_logs)
-        if schema_url:
-            size += util.size_string(b"\x1a", schema_url)
-
-        super().__init__(size)
-
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.resource:
-            proto_serializer.serialize_message(b"\n", self.resource)
-        if self.scope_logs:
-            proto_serializer.serialize_repeated_message(b"\x12", self.scope_logs)
-        if self.schema_url:
-            proto_serializer.serialize_string(b"\x1a", self.schema_url)
+def write_to_LogsData(
+    message: Dict[str, Any], proto_serializer: ProtoSerializer
+) -> None:
+    if message["resource_logs"]:
+        proto_serializer.serialize_repeated_message(b"\n", message["resource_logs"])
 
 
-class ScopeLogs(MessageMarshaler):
-    def __init__(
-        self,
-        scope: MessageMarshaler = None,
-        log_records: List[MessageMarshaler] = None,
-        schema_url: str = "",
-    ):
-        self.scope = scope
-        self.log_records = log_records
-        self.schema_url = schema_url
+def ResourceLogs(
+    resource: Optional[Dict[str, Any]] = None,
+    scope_logs: Optional[List[Dict[str, Any]]] = None,
+    schema_url: Optional[str] = None,
+) -> Dict[str, Any]:
+    size = 0
+    if resource:
+        size += util.size_message(b"\n", resource)
+    if scope_logs:
+        size += util.size_repeated_message(b"\x12", scope_logs)
+    if schema_url:
+        size += util.size_string(b"\x1a", schema_url)
 
-        size = 0
-        if scope:
-            size += util.size_message(b"\n", scope)
-        if log_records:
-            size += util.size_repeated_message(b"\x12", log_records)
-        if schema_url:
-            size += util.size_string(b"\x1a", schema_url)
-
-        super().__init__(size)
-
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.scope:
-            proto_serializer.serialize_message(b"\n", self.scope)
-        if self.log_records:
-            proto_serializer.serialize_repeated_message(b"\x12", self.log_records)
-        if self.schema_url:
-            proto_serializer.serialize_string(b"\x1a", self.schema_url)
+    return {
+        "__size": size,
+        "__serialize_function": write_to_ResourceLogs,
+        "resource": resource,
+        "scope_logs": scope_logs,
+        "schema_url": schema_url,
+    }
 
 
-class LogRecord(MessageMarshaler):
-    def __init__(
-        self,
-        time_unix_nano: int = 0,
-        severity_number: int = 0,
-        severity_text: str = "",
-        body: MessageMarshaler = None,
-        attributes: List[MessageMarshaler] = None,
-        dropped_attributes_count: int = 0,
-        flags: int = 0,
-        trace_id: bytes = b"",
-        span_id: bytes = b"",
-        observed_time_unix_nano: int = 0,
-    ):
-        self.time_unix_nano = time_unix_nano
-        self.severity_number = severity_number
-        self.severity_text = severity_text
-        self.body = body
-        self.attributes = attributes
-        self.dropped_attributes_count = dropped_attributes_count
-        self.flags = flags
-        self.trace_id = trace_id
-        self.span_id = span_id
-        self.observed_time_unix_nano = observed_time_unix_nano
+def write_to_ResourceLogs(
+    message: Dict[str, Any], proto_serializer: ProtoSerializer
+) -> None:
+    if message["resource"]:
+        proto_serializer.serialize_message(b"\n", message["resource"])
+    if message["scope_logs"]:
+        proto_serializer.serialize_repeated_message(b"\x12", message["scope_logs"])
+    if message["schema_url"]:
+        proto_serializer.serialize_string(b"\x1a", message["schema_url"])
 
-        size = 0
-        if time_unix_nano:
-            size += util.size_fixed64(b"\t", time_unix_nano)
-        if severity_number:
-            size += util.size_enum(b"\x10", severity_number)
-        if severity_text:
-            size += util.size_string(b"\x1a", severity_text)
-        if body:
-            size += util.size_message(b"*", body)
-        if attributes:
-            size += util.size_repeated_message(b"2", attributes)
-        if dropped_attributes_count:
-            size += util.size_uint32(b"8", dropped_attributes_count)
-        if flags:
-            size += util.size_fixed32(b"E", flags)
-        if trace_id:
-            size += util.size_bytes(b"J", trace_id)
-        if span_id:
-            size += util.size_bytes(b"R", span_id)
-        if observed_time_unix_nano:
-            size += util.size_fixed64(b"Y", observed_time_unix_nano)
 
-        super().__init__(size)
+def ScopeLogs(
+    scope: Optional[Dict[str, Any]] = None,
+    log_records: Optional[List[Dict[str, Any]]] = None,
+    schema_url: Optional[str] = None,
+) -> Dict[str, Any]:
+    size = 0
+    if scope:
+        size += util.size_message(b"\n", scope)
+    if log_records:
+        size += util.size_repeated_message(b"\x12", log_records)
+    if schema_url:
+        size += util.size_string(b"\x1a", schema_url)
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.time_unix_nano:
-            proto_serializer.serialize_fixed64(b"\t", self.time_unix_nano)
-        if self.severity_number:
-            proto_serializer.serialize_enum(b"\x10", self.severity_number)
-        if self.severity_text:
-            proto_serializer.serialize_string(b"\x1a", self.severity_text)
-        if self.body:
-            proto_serializer.serialize_message(b"*", self.body)
-        if self.attributes:
-            proto_serializer.serialize_repeated_message(b"2", self.attributes)
-        if self.dropped_attributes_count:
-            proto_serializer.serialize_uint32(b"8", self.dropped_attributes_count)
-        if self.flags:
-            proto_serializer.serialize_fixed32(b"E", self.flags)
-        if self.trace_id:
-            proto_serializer.serialize_bytes(b"J", self.trace_id)
-        if self.span_id:
-            proto_serializer.serialize_bytes(b"R", self.span_id)
-        if self.observed_time_unix_nano:
-            proto_serializer.serialize_fixed64(b"Y", self.observed_time_unix_nano)
+    return {
+        "__size": size,
+        "__serialize_function": write_to_ScopeLogs,
+        "scope": scope,
+        "log_records": log_records,
+        "schema_url": schema_url,
+    }
+
+
+def write_to_ScopeLogs(
+    message: Dict[str, Any], proto_serializer: ProtoSerializer
+) -> None:
+    if message["scope"]:
+        proto_serializer.serialize_message(b"\n", message["scope"])
+    if message["log_records"]:
+        proto_serializer.serialize_repeated_message(b"\x12", message["log_records"])
+    if message["schema_url"]:
+        proto_serializer.serialize_string(b"\x1a", message["schema_url"])
+
+
+def LogRecord(
+    time_unix_nano: Optional[int] = None,
+    severity_number: Optional[int] = None,
+    severity_text: Optional[str] = None,
+    body: Optional[Dict[str, Any]] = None,
+    attributes: Optional[List[Dict[str, Any]]] = None,
+    dropped_attributes_count: Optional[int] = None,
+    flags: Optional[int] = None,
+    trace_id: Optional[bytes] = None,
+    span_id: Optional[bytes] = None,
+    observed_time_unix_nano: Optional[int] = None,
+) -> Dict[str, Any]:
+    size = 0
+    if time_unix_nano:
+        size += util.size_fixed64(b"\t", time_unix_nano)
+    if severity_number:
+        size += util.size_enum(b"\x10", severity_number)
+    if severity_text:
+        size += util.size_string(b"\x1a", severity_text)
+    if body:
+        size += util.size_message(b"*", body)
+    if attributes:
+        size += util.size_repeated_message(b"2", attributes)
+    if dropped_attributes_count:
+        size += util.size_uint32(b"8", dropped_attributes_count)
+    if flags:
+        size += util.size_fixed32(b"E", flags)
+    if trace_id:
+        size += util.size_bytes(b"J", trace_id)
+    if span_id:
+        size += util.size_bytes(b"R", span_id)
+    if observed_time_unix_nano:
+        size += util.size_fixed64(b"Y", observed_time_unix_nano)
+
+    return {
+        "__size": size,
+        "__serialize_function": write_to_LogRecord,
+        "time_unix_nano": time_unix_nano,
+        "severity_number": severity_number,
+        "severity_text": severity_text,
+        "body": body,
+        "attributes": attributes,
+        "dropped_attributes_count": dropped_attributes_count,
+        "flags": flags,
+        "trace_id": trace_id,
+        "span_id": span_id,
+        "observed_time_unix_nano": observed_time_unix_nano,
+    }
+
+
+def write_to_LogRecord(
+    message: Dict[str, Any], proto_serializer: ProtoSerializer
+) -> None:
+    if message["time_unix_nano"]:
+        proto_serializer.serialize_fixed64(b"\t", message["time_unix_nano"])
+    if message["severity_number"]:
+        proto_serializer.serialize_enum(b"\x10", message["severity_number"])
+    if message["severity_text"]:
+        proto_serializer.serialize_string(b"\x1a", message["severity_text"])
+    if message["body"]:
+        proto_serializer.serialize_message(b"*", message["body"])
+    if message["attributes"]:
+        proto_serializer.serialize_repeated_message(b"2", message["attributes"])
+    if message["dropped_attributes_count"]:
+        proto_serializer.serialize_uint32(b"8", message["dropped_attributes_count"])
+    if message["flags"]:
+        proto_serializer.serialize_fixed32(b"E", message["flags"])
+    if message["trace_id"]:
+        proto_serializer.serialize_bytes(b"J", message["trace_id"])
+    if message["span_id"]:
+        proto_serializer.serialize_bytes(b"R", message["span_id"])
+    if message["observed_time_unix_nano"]:
+        proto_serializer.serialize_fixed64(b"Y", message["observed_time_unix_nano"])

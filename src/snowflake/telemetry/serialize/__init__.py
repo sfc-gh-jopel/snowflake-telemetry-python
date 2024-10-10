@@ -1,6 +1,6 @@
 import struct
 from enum import IntEnum
-from typing import Callable, Any, List, Union
+from typing import Callable, Any, List, Union, Dict
 
 from snowflake.telemetry.serialize.util import (
     size_repeated_double,
@@ -10,17 +10,10 @@ from snowflake.telemetry.serialize.util import (
 
 Enum = IntEnum
 
-class MessageMarshaler:
-    def __init__(self, size: int) -> None:
-        self.size = size
-
-    def __bytes__(self) -> bytes:
-        out = ProtoSerializer()
-        self.write_to(out)
-        return bytes(out)
-
-    def write_to(self, out: "ProtoSerializer") -> None:
-        ...
+def SerializeToString(message: Dict[str, Any]) -> bytes:
+    serializer = ProtoSerializer()
+    message["__serialize_function"](message, serializer)
+    return bytes(serializer)
 
 class ProtoSerializer:
     __slots__ = ("out")
@@ -100,7 +93,7 @@ class ProtoSerializer:
     def serialize_message(
             self, 
             tag: bytes, 
-            value: MessageMarshaler,
+            value: Dict[str, Any],
         ) -> None:
         # If value is None, omit message entirely
         if value is None:
@@ -109,13 +102,13 @@ class ProtoSerializer:
         # Even if all fields are default (ommnited)
         # The presence of the message is still encoded
         self.out += tag
-        self._write_varint_unsigned(value.size)
-        value.write_to(self)
+        self._write_varint_unsigned(value["__size"])
+        value["__serialize_function"](value, self)
 
     def serialize_repeated_message(
             self, 
             tag: bytes, 
-            values: List[MessageMarshaler],
+            values: List[Dict[str, Any]],
         ) -> None:
         if not values:
             return
