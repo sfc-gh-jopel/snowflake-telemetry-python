@@ -100,7 +100,7 @@ class ProtoSerializer:
     def serialize_message(
             self, 
             tag: bytes, 
-            value: MessageMarshaler,
+            value: bytes,
         ) -> None:
         # If value is None, omit message entirely
         if value is None:
@@ -109,13 +109,13 @@ class ProtoSerializer:
         # Even if all fields are default (ommnited)
         # The presence of the message is still encoded
         self.out += tag
-        self._write_varint_unsigned(value.size)
-        value.write_to(self)
+        self._write_varint_unsigned(len(value))
+        self.out.extend(value)
 
     def serialize_repeated_message(
             self, 
             tag: bytes, 
-            values: List[MessageMarshaler],
+            values: List[bytes],
         ) -> None:
         if not values:
             return

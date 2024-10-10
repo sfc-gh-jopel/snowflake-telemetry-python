@@ -2,71 +2,46 @@
 # sources:
 # plugin: python-serialize
 
-from typing import List
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    TypedDict,
+)
 
 from snowflake.telemetry.serialize import (
     Enum,
-    MessageMarshaler,
     ProtoSerializer,
     util,
 )
 
 
-class ExportLogsServiceRequest(MessageMarshaler):
-    def __init__(
-        self,
-        resource_logs: List[MessageMarshaler] = None,
-    ):
-        self.resource_logs = resource_logs
-
-        size = 0
-        if resource_logs:
-            size += util.size_repeated_message(b"\n", resource_logs)
-
-        super().__init__(size)
-
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.resource_logs:
-            proto_serializer.serialize_repeated_message(b"\n", self.resource_logs)
+def ExportLogsServiceRequest(
+    resource_logs: Optional[List[bytes]] = None,
+) -> bytes:
+    proto_serializer = ProtoSerializer()
+    if resource_logs:
+        proto_serializer.serialize_repeated_message(b"\n", resource_logs)
+    return proto_serializer.out
 
 
-class ExportLogsServiceResponse(MessageMarshaler):
-    def __init__(
-        self,
-        partial_success: MessageMarshaler = None,
-    ):
-        self.partial_success = partial_success
-
-        size = 0
-        if partial_success:
-            size += util.size_message(b"\n", partial_success)
-
-        super().__init__(size)
-
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.partial_success:
-            proto_serializer.serialize_message(b"\n", self.partial_success)
+def ExportLogsServiceResponse(
+    partial_success: Optional[bytes] = None,
+) -> bytes:
+    proto_serializer = ProtoSerializer()
+    if partial_success:
+        proto_serializer.serialize_message(b"\n", partial_success)
+    return proto_serializer.out
 
 
-class ExportLogsPartialSuccess(MessageMarshaler):
-    def __init__(
-        self,
-        rejected_log_records: int = 0,
-        error_message: str = "",
-    ):
-        self.rejected_log_records = rejected_log_records
-        self.error_message = error_message
-
-        size = 0
-        if rejected_log_records:
-            size += util.size_int64(b"\x08", rejected_log_records)
-        if error_message:
-            size += util.size_string(b"\x12", error_message)
-
-        super().__init__(size)
-
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.rejected_log_records:
-            proto_serializer.serialize_int64(b"\x08", self.rejected_log_records)
-        if self.error_message:
-            proto_serializer.serialize_string(b"\x12", self.error_message)
+def ExportLogsPartialSuccess(
+    rejected_log_records: Optional[int] = None,
+    error_message: Optional[str] = None,
+) -> bytes:
+    proto_serializer = ProtoSerializer()
+    if rejected_log_records:
+        proto_serializer.serialize_int64(b"\x08", rejected_log_records)
+    if error_message:
+        proto_serializer.serialize_string(b"\x12", error_message)
+    return proto_serializer.out

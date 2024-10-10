@@ -2,162 +2,92 @@
 # sources:
 # plugin: python-serialize
 
-from typing import List
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    TypedDict,
+)
 
 from snowflake.telemetry.serialize import (
     Enum,
-    MessageMarshaler,
     ProtoSerializer,
     util,
 )
 
 
-class AnyValue(MessageMarshaler):
-    def __init__(
-        self,
-        bytes_value: bytes = None,
-        kvlist_value: MessageMarshaler = None,
-        array_value: MessageMarshaler = None,
-        double_value: float = None,
-        int_value: int = None,
-        bool_value: bool = None,
-        string_value: str = None,
-    ):
-        self.bytes_value = bytes_value
-        self.kvlist_value = kvlist_value
-        self.array_value = array_value
-        self.double_value = double_value
-        self.int_value = int_value
-        self.bool_value = bool_value
-        self.string_value = string_value
-
-        size = 0
-        if bytes_value is not None:
-            size += util.size_bytes(b":", bytes_value)
-        if kvlist_value is not None:
-            size += util.size_message(b"2", kvlist_value)
-        if array_value is not None:
-            size += util.size_message(b"*", array_value)
-        if double_value is not None:
-            size += util.size_double(b"!", double_value)
-        if int_value is not None:
-            size += util.size_int64(b"\x18", int_value)
-        if bool_value is not None:
-            size += util.size_bool(b"\x10", bool_value)
-        if string_value is not None:
-            size += util.size_string(b"\n", string_value)
-
-        super().__init__(size)
-
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        # oneof group value
-        if self.bytes_value is not None:
-            proto_serializer.serialize_bytes(b":", self.bytes_value)
-        elif self.kvlist_value is not None:
-            proto_serializer.serialize_message(b"2", self.kvlist_value)
-        elif self.array_value is not None:
-            proto_serializer.serialize_message(b"*", self.array_value)
-        elif self.double_value is not None:
-            proto_serializer.serialize_double(b"!", self.double_value)
-        elif self.int_value is not None:
-            proto_serializer.serialize_int64(b"\x18", self.int_value)
-        elif self.bool_value is not None:
-            proto_serializer.serialize_bool(b"\x10", self.bool_value)
-        elif self.string_value is not None:
-            proto_serializer.serialize_string(b"\n", self.string_value)
+def AnyValue(
+    bytes_value: Optional[bytes] = None,
+    kvlist_value: Optional[bytes] = None,
+    array_value: Optional[bytes] = None,
+    double_value: Optional[float] = None,
+    int_value: Optional[int] = None,
+    bool_value: Optional[bool] = None,
+    string_value: Optional[str] = None,
+) -> bytes:
+    proto_serializer = ProtoSerializer()
+    # oneof group value
+    if bytes_value is not None:
+        proto_serializer.serialize_bytes(b":", bytes_value)
+    elif kvlist_value is not None:
+        proto_serializer.serialize_message(b"2", kvlist_value)
+    elif array_value is not None:
+        proto_serializer.serialize_message(b"*", array_value)
+    elif double_value is not None:
+        proto_serializer.serialize_double(b"!", double_value)
+    elif int_value is not None:
+        proto_serializer.serialize_int64(b"\x18", int_value)
+    elif bool_value is not None:
+        proto_serializer.serialize_bool(b"\x10", bool_value)
+    elif string_value is not None:
+        proto_serializer.serialize_string(b"\n", string_value)
+    return proto_serializer.out
 
 
-class ArrayValue(MessageMarshaler):
-    def __init__(
-        self,
-        values: List[MessageMarshaler] = None,
-    ):
-        self.values = values
-
-        size = 0
-        if values:
-            size += util.size_repeated_message(b"\n", values)
-
-        super().__init__(size)
-
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.values:
-            proto_serializer.serialize_repeated_message(b"\n", self.values)
+def ArrayValue(
+    values: Optional[List[bytes]] = None,
+) -> bytes:
+    proto_serializer = ProtoSerializer()
+    if values:
+        proto_serializer.serialize_repeated_message(b"\n", values)
+    return proto_serializer.out
 
 
-class KeyValueList(MessageMarshaler):
-    def __init__(
-        self,
-        values: List[MessageMarshaler] = None,
-    ):
-        self.values = values
-
-        size = 0
-        if values:
-            size += util.size_repeated_message(b"\n", values)
-
-        super().__init__(size)
-
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.values:
-            proto_serializer.serialize_repeated_message(b"\n", self.values)
+def KeyValueList(
+    values: Optional[List[bytes]] = None,
+) -> bytes:
+    proto_serializer = ProtoSerializer()
+    if values:
+        proto_serializer.serialize_repeated_message(b"\n", values)
+    return proto_serializer.out
 
 
-class KeyValue(MessageMarshaler):
-    def __init__(
-        self,
-        key: str = "",
-        value: MessageMarshaler = None,
-    ):
-        self.key = key
-        self.value = value
-
-        size = 0
-        if key:
-            size += util.size_string(b"\n", key)
-        if value:
-            size += util.size_message(b"\x12", value)
-
-        super().__init__(size)
-
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.key:
-            proto_serializer.serialize_string(b"\n", self.key)
-        if self.value:
-            proto_serializer.serialize_message(b"\x12", self.value)
+def KeyValue(
+    key: Optional[str] = None,
+    value: Optional[bytes] = None,
+) -> bytes:
+    proto_serializer = ProtoSerializer()
+    if key:
+        proto_serializer.serialize_string(b"\n", key)
+    if value:
+        proto_serializer.serialize_message(b"\x12", value)
+    return proto_serializer.out
 
 
-class InstrumentationScope(MessageMarshaler):
-    def __init__(
-        self,
-        name: str = "",
-        version: str = "",
-        attributes: List[MessageMarshaler] = None,
-        dropped_attributes_count: int = 0,
-    ):
-        self.name = name
-        self.version = version
-        self.attributes = attributes
-        self.dropped_attributes_count = dropped_attributes_count
-
-        size = 0
-        if name:
-            size += util.size_string(b"\n", name)
-        if version:
-            size += util.size_string(b"\x12", version)
-        if attributes:
-            size += util.size_repeated_message(b"\x1a", attributes)
-        if dropped_attributes_count:
-            size += util.size_uint32(b" ", dropped_attributes_count)
-
-        super().__init__(size)
-
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.name:
-            proto_serializer.serialize_string(b"\n", self.name)
-        if self.version:
-            proto_serializer.serialize_string(b"\x12", self.version)
-        if self.attributes:
-            proto_serializer.serialize_repeated_message(b"\x1a", self.attributes)
-        if self.dropped_attributes_count:
-            proto_serializer.serialize_uint32(b" ", self.dropped_attributes_count)
+def InstrumentationScope(
+    name: Optional[str] = None,
+    version: Optional[str] = None,
+    attributes: Optional[List[bytes]] = None,
+    dropped_attributes_count: Optional[int] = None,
+) -> bytes:
+    proto_serializer = ProtoSerializer()
+    if name:
+        proto_serializer.serialize_string(b"\n", name)
+    if version:
+        proto_serializer.serialize_string(b"\x12", version)
+    if attributes:
+        proto_serializer.serialize_repeated_message(b"\x1a", attributes)
+    if dropped_attributes_count:
+        proto_serializer.serialize_uint32(b" ", dropped_attributes_count)
+    return proto_serializer.out

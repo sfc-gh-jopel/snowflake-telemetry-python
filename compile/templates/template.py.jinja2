@@ -5,10 +5,9 @@
 from snowflake.telemetry.serialize import (
     Enum,
     ProtoSerializer,
-    MessageMarshaler,
     util,
 )
-from typing import List
+from typing import List, TypedDict, Dict, Any, Optional
 
 {% for enum in file_template.enums %}
 class {{ enum.name }}(Enum):
@@ -18,68 +17,31 @@ class {{ enum.name }}(Enum):
 {% endfor %}
 
 {% macro render_message(message) %}
-class {{ message.name }}(MessageMarshaler):
-    def __init__(
-        self,
-{% for field in message.fields %}
-{% if field.fields is defined %}
-{% for oneof_field in field.fields %}
-        {{ oneof_field.name }}: {{ oneof_field.python_type }} = {{ oneof_field.default }},
-{% endfor %}
-{% else %}
-        {{ field.name }}: {{ field.python_type }} = {{ field.default }},
-{% endif %}
-{% endfor %}
-    ):
+def {{ message.name }}(
 {%- for field in message.fields %}
 {%- if field.fields is defined %}
 {%- for oneof_field in field.fields %}
-        self.{{ oneof_field.name }} = {{ oneof_field.name }}
+    {{ oneof_field.name }}: Optional[{{ oneof_field.python_type }}] = None,
 {%- endfor %}
 {%- else %}
-        self.{{ field.name }} = {{ field.name }}
+    {{ field.name }}: Optional[{{ field.python_type }}] = None,
 {%- endif %}
 {%- endfor %}
-
-        size = 0
+) -> bytes:
+    proto_serializer = ProtoSerializer()
 {%- for field in message.fields %}
 {%- if field.fields is defined %}
+    # oneof group {{ field.name }}
 {%- for oneof_field in field.fields %}
-        if {{ oneof_field.name }} is not None:
-            size += util.size_{{ oneof_field.proto_type }}({{ oneof_field.tag }}, {{ oneof_field.name }})
+    {% if loop.index != 1 %}el{% endif %}if {{ oneof_field.name }} is not None:
+        proto_serializer.serialize_{{ oneof_field.proto_type }}({{ oneof_field.tag }}, {{ oneof_field.name }})
 {%- endfor %}
 {%- else %}
-        if {{ field.name }}: 
-            size += util.size_{{ field.proto_type }}({{ field.tag }}, {{ field.name }})
+    if {{ field.name }}: 
+        proto_serializer.serialize_{{ field.proto_type }}({{ field.tag }}, {{ field.name }})
 {%- endif %}
 {%- endfor %}
-
-        super().__init__(size)
-    
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-{%- for field in message.fields %}
-{%- if field.fields is defined %}
-        # oneof group {{ field.name }}
-{%- for oneof_field in field.fields %}
-        {% if loop.index != 1 %}el{% endif %}if self.{{ oneof_field.name }} is not None:
-            proto_serializer.serialize_{{ oneof_field.proto_type }}({{ oneof_field.tag }}, self.{{ oneof_field.name }})
-{%- endfor %}
-{%- else %}
-        if self.{{ field.name }}: proto_serializer.serialize_{{ field.proto_type }}({{ field.tag }}, self.{{ field.name }})
-{%- endif %}
-{%- endfor %}
-
-{% for nested_enum in message.enums %}
-    class {{ nested_enum.name }}(Enum):
-{%- for value in nested_enum.values %}
-        {{ value.name }} = {{ value.number }}
-{%- endfor %}
-{% endfor %}
-
-{% for nested_message in message.messages %}
-{%- set nested_message_result = render_message(nested_message) -%}
-{{ nested_message_result | indent(4) }}
-{% endfor %}
+    return proto_serializer.out
 {% endmacro %}
 
 {% for message in file_template.messages %}
