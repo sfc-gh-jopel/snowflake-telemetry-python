@@ -18,17 +18,16 @@ class ExportTraceServiceRequest(MessageMarshaler):
         resource_spans: List[MessageMarshaler] = None,
     ):
         self.resource_spans = resource_spans
-        super().__init__(self.calculate_size())
+
+        size = 0
+        if resource_spans:
+            size += util.size_repeated_message(b"\n", resource_spans)
+
+        super().__init__(size)
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.resource_spans:
             proto_serializer.serialize_repeated_message(b"\n", self.resource_spans)
-
-    def calculate_size(self) -> int:
-        size = 0
-        if self.resource_spans:
-            size += util.size_repeated_message(b"\n", self.resource_spans)
-        return size
 
 
 class ExportTraceServiceResponse(MessageMarshaler):
@@ -37,17 +36,16 @@ class ExportTraceServiceResponse(MessageMarshaler):
         partial_success: MessageMarshaler = None,
     ):
         self.partial_success = partial_success
-        super().__init__(self.calculate_size())
+
+        size = 0
+        if partial_success:
+            size += util.size_message(b"\n", partial_success)
+
+        super().__init__(size)
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.partial_success:
             proto_serializer.serialize_message(b"\n", self.partial_success)
-
-    def calculate_size(self) -> int:
-        size = 0
-        if self.partial_success:
-            size += util.size_message(b"\n", self.partial_success)
-        return size
 
 
 class ExportTracePartialSuccess(MessageMarshaler):
@@ -58,18 +56,17 @@ class ExportTracePartialSuccess(MessageMarshaler):
     ):
         self.rejected_spans = rejected_spans
         self.error_message = error_message
-        super().__init__(self.calculate_size())
+
+        size = 0
+        if rejected_spans:
+            size += util.size_int64(b"\x08", rejected_spans)
+        if error_message:
+            size += util.size_string(b"\x12", error_message)
+
+        super().__init__(size)
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.rejected_spans:
             proto_serializer.serialize_int64(b"\x08", self.rejected_spans)
         if self.error_message:
             proto_serializer.serialize_string(b"\x12", self.error_message)
-
-    def calculate_size(self) -> int:
-        size = 0
-        if self.rejected_spans:
-            size += util.size_int64(b"\x08", self.rejected_spans)
-        if self.error_message:
-            size += util.size_string(b"\x12", self.error_message)
-        return size

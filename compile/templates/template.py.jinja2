@@ -40,7 +40,21 @@ class {{ message.name }}(MessageMarshaler):
         self.{{ field.name }} = {{ field.name }}
 {%- endif %}
 {%- endfor %}
-        super().__init__(self.calculate_size())
+
+        size = 0
+{%- for field in message.fields %}
+{%- if field.fields is defined %}
+{%- for oneof_field in field.fields %}
+        if {{ oneof_field.name }} is not None:
+            size += util.size_{{ oneof_field.proto_type }}({{ oneof_field.tag }}, {{ oneof_field.name }})
+{%- endfor %}
+{%- else %}
+        if {{ field.name }}: 
+            size += util.size_{{ field.proto_type }}({{ field.tag }}, {{ field.name }})
+{%- endif %}
+{%- endfor %}
+
+        super().__init__(size)
     
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
 {%- for field in message.fields %}
@@ -54,21 +68,6 @@ class {{ message.name }}(MessageMarshaler):
         if self.{{ field.name }}: proto_serializer.serialize_{{ field.proto_type }}({{ field.tag }}, self.{{ field.name }})
 {%- endif %}
 {%- endfor %}
-
-    def calculate_size(self) -> int:
-        size = 0
-{%- for field in message.fields %}
-{%- if field.fields is defined %}
-{%- for oneof_field in field.fields %}
-        if self.{{ oneof_field.name }} is not None:
-            size += util.size_{{ oneof_field.proto_type }}({{ oneof_field.tag }}, self.{{ oneof_field.name }})
-{%- endfor %}
-{%- else %}
-        if self.{{ field.name }}: 
-            size += util.size_{{ field.proto_type }}({{ field.tag }}, self.{{ field.name }})
-{%- endif %}
-{%- endfor %}
-        return size
 
 {% for nested_enum in message.enums %}
     class {{ nested_enum.name }}(Enum):

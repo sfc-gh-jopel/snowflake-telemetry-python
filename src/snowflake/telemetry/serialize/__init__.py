@@ -3,7 +3,6 @@ from enum import IntEnum
 from typing import Callable, Any, List, Union
 
 from snowflake.telemetry.serialize.util import (
-    size_varint,
     size_repeated_double,
     size_repeated_fixed64,
     size_repeated_uint64,
@@ -24,11 +23,10 @@ class MessageMarshaler:
         ...
 
 class ProtoSerializer:
-    __slots__ = ("out","varint_buf")
+    __slots__ = ("out")
 
     def __init__(self) -> None:
         self.out = bytearray()
-        self.varint_buf = memoryview(bytearray(10))
     
     def __bytes__(self) -> bytes:
         return bytes(self.out)
@@ -53,19 +51,19 @@ class ProtoSerializer:
     
     def serialize_sint32(self, tag: bytes, value: int) -> None:
         self.out += tag
-        self._write_varint_unsigned(encode_zigzag32(value))
+        self._write_varint_unsigned(value << 1 if value >= 0 else (value << 1) ^ (~0))
     
     def serialize_sint64(self, tag: bytes, value: int) -> None:
         self.out += tag
-        self._write_varint_unsigned(encode_zigzag64(value))
+        self._write_varint_unsigned(value << 1 if value >= 0 else (value << 1) ^ (~0))
     
     def serialize_int32(self, tag: bytes, value: int) -> None:
         self.out += tag
-        self._write_varint_signed(value)
+        self._write_varint_unsigned(value + 1 << 32 if value < 0 else value)
     
     def serialize_int64(self, tag: bytes, value: int) -> None:
         self.out += tag
-        self._write_varint_signed(value)
+        self._write_varint_unsigned(value + 1 << 64 if value < 0 else value)
     
     def serialize_fixed32(self, tag: bytes, value: int) -> None:
         self.out += tag
@@ -152,29 +150,14 @@ class ProtoSerializer:
     def serialize_repeated_uint64(self, tag: bytes, values: List[int]) -> None:
         self.serialize_repeated_packed(tag, values, self._write_varint_unsigned, size_repeated_uint64)
 
-    def _write_varint_signed(self, value: int) -> None:
-        if value < 0:
-            value += 1 << 64
-        self._write_varint_unsigned(value)
-
     def _write_varint_unsigned(self, value: int) -> None:
-        j = 0
         while value >= 128:
-            self.varint_buf[j] = (value & 0x7F) | 0x80
-            j += 1
+            self.out.append((value & 0x7F) | 0x80)
             value >>= 7
-        self.varint_buf[j] = value
-        j += 1
-        self.out += self.varint_buf[:j]
+        self.out.append(value)
 
     def write_double_no_tag(self, value: float) -> None:
         self.out += struct.pack("<d", value)
 
     def write_fixed64_no_tag(self, value: int) -> None:
         self.out += struct.pack("<Q", value)
-
-def encode_zigzag32(value: int) -> int:
-    return value << 1 if value >= 0 else (value << 1) ^ (~0)
-
-def encode_zigzag64(value: int) -> int:
-    return value << 1 if value >= 0 else (value << 1) ^ (~0)

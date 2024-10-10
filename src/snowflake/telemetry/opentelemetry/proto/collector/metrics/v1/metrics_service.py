@@ -18,17 +18,16 @@ class ExportMetricsServiceRequest(MessageMarshaler):
         resource_metrics: List[MessageMarshaler] = None,
     ):
         self.resource_metrics = resource_metrics
-        super().__init__(self.calculate_size())
+
+        size = 0
+        if resource_metrics:
+            size += util.size_repeated_message(b"\n", resource_metrics)
+
+        super().__init__(size)
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.resource_metrics:
             proto_serializer.serialize_repeated_message(b"\n", self.resource_metrics)
-
-    def calculate_size(self) -> int:
-        size = 0
-        if self.resource_metrics:
-            size += util.size_repeated_message(b"\n", self.resource_metrics)
-        return size
 
 
 class ExportMetricsServiceResponse(MessageMarshaler):
@@ -37,17 +36,16 @@ class ExportMetricsServiceResponse(MessageMarshaler):
         partial_success: MessageMarshaler = None,
     ):
         self.partial_success = partial_success
-        super().__init__(self.calculate_size())
+
+        size = 0
+        if partial_success:
+            size += util.size_message(b"\n", partial_success)
+
+        super().__init__(size)
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.partial_success:
             proto_serializer.serialize_message(b"\n", self.partial_success)
-
-    def calculate_size(self) -> int:
-        size = 0
-        if self.partial_success:
-            size += util.size_message(b"\n", self.partial_success)
-        return size
 
 
 class ExportMetricsPartialSuccess(MessageMarshaler):
@@ -58,18 +56,17 @@ class ExportMetricsPartialSuccess(MessageMarshaler):
     ):
         self.rejected_data_points = rejected_data_points
         self.error_message = error_message
-        super().__init__(self.calculate_size())
+
+        size = 0
+        if rejected_data_points:
+            size += util.size_int64(b"\x08", rejected_data_points)
+        if error_message:
+            size += util.size_string(b"\x12", error_message)
+
+        super().__init__(size)
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.rejected_data_points:
             proto_serializer.serialize_int64(b"\x08", self.rejected_data_points)
         if self.error_message:
             proto_serializer.serialize_string(b"\x12", self.error_message)
-
-    def calculate_size(self) -> int:
-        size = 0
-        if self.rejected_data_points:
-            size += util.size_int64(b"\x08", self.rejected_data_points)
-        if self.error_message:
-            size += util.size_string(b"\x12", self.error_message)
-        return size
