@@ -28,22 +28,9 @@ from typing import (
 )
 
 from opentelemetry.sdk.util.instrumentation import InstrumentationScope
-from snowflake.telemetry.opentelemetry.proto.common.v1.common import (
-    InstrumentationScope as PB2InstrumentationScope,
-)
-from snowflake.telemetry.opentelemetry.proto.resource.v1.resource import (
-    Resource as PB2Resource,
-)
-from snowflake.telemetry.opentelemetry.proto.common.v1.common import AnyValue as PB2AnyValue
-from snowflake.telemetry.opentelemetry.proto.common.v1.common import KeyValue as PB2KeyValue
-from snowflake.telemetry.opentelemetry.proto.common.v1.common import (
-    KeyValueList as PB2KeyValueList,
-)
-from snowflake.telemetry.opentelemetry.proto.common.v1.common import (
-    ArrayValue as PB2ArrayValue,
-)
 from opentelemetry.sdk.trace import Resource
 from opentelemetry.util.types import Attributes
+from snowflake.telemetry.serialize import ProtoSerializer
 
 _logger = logging.getLogger(__name__)
 
@@ -52,44 +39,43 @@ _ResourceDataT = TypeVar("_ResourceDataT")
 
 
 def _encode_instrumentation_scope(
+    proto_serializer: ProtoSerializer,
     instrumentation_scope: InstrumentationScope,
-) -> PB2InstrumentationScope:
+) -> None:
     if instrumentation_scope is None:
-        return PB2InstrumentationScope()
-    return PB2InstrumentationScope(
-        name=instrumentation_scope.name,
-        version=instrumentation_scope.version,
-    )
+        return
+    if instrumentation_scope.name:
+        proto_serializer.serialize_string(b"\n", instrumentation_scope.name)
+    if instrumentation_scope.version:
+        proto_serializer.serialize_string(b"\x12", instrumentation_scope.version)
 
 
-def _encode_resource(resource: Resource) -> PB2Resource:
-    return PB2Resource(attributes=_encode_attributes(resource.attributes))
+def _encode_resource(proto_serializer, resource: Resource) -> None:
+    _encode_attributes(proto_serializer, resource.attributes)
 
 
-def _encode_value(value: Any) -> PB2AnyValue:
+def _encode_value(proto_serializer, value: Any) -> None:
     if isinstance(value, bool):
-        return PB2AnyValue(bool_value=value)
-    if isinstance(value, str):
-        return PB2AnyValue(string_value=value)
-    if isinstance(value, int):
-        return PB2AnyValue(int_value=value)
-    if isinstance(value, float):
-        return PB2AnyValue(double_value=value)
-    if isinstance(value, Sequence):
-        return PB2AnyValue(
-            array_value=PB2ArrayValue(values=[_encode_value(v) for v in value])
-        )
+        proto_serializer.serialize_bool(b"\x10", value)
+    elif isinstance(value, str):
+        proto_serializer.serialize_string(b"\n", value)
+    elif isinstance(value, int):
+        proto_serializer.serialize_int64(b"\x18", value)
+    elif isinstance(value, float):
+        proto_serializer.serialize_double(b"!", value)
+    elif isinstance(value, Sequence):
+        for v in value:
+            _encode_value(proto_serializer, v)
     elif isinstance(value, Mapping):
-        return PB2AnyValue(
-            kvlist_value=PB2KeyValueList(
-                values=[_encode_key_value(str(k), v) for k, v in value.items()]
-            )
-        )
-    raise Exception(f"Invalid type {type(value)} of value {value}")
+        for k, v in value.items():
+            _encode_key_value(proto_serializer, k, v)
+    else:
+        raise Exception(f"Invalid type {type(value)} of value {value}")
 
 
-def _encode_key_value(key: str, value: Any) -> PB2KeyValue:
-    return PB2KeyValue(key=key, value=_encode_value(value))
+def _encode_key_value(proto_serializer, key: str, value: Any) -> None:
+    proto_serializer.serialize_string(b"\n", key)
+    _encode_value(proto_serializer, value)
 
 
 def _encode_span_id(span_id: int) -> bytes:
@@ -101,16 +87,13 @@ def _encode_trace_id(trace_id: int) -> bytes:
 
 
 def _encode_attributes(
+    proto_serializer: ProtoSerializer,
     attributes: Attributes,
-) -> Optional[List[PB2KeyValue]]:
+) -> None:
     if attributes:
-        pb2_attributes = []
         for key, value in attributes.items():
             # pylint: disable=broad-exception-caught
             try:
-                pb2_attributes.append(_encode_key_value(key, value))
+                _encode_key_value(proto_serializer, key, value)
             except Exception as error:
                 _logger.exception("Failed to encode key %s: %s", key, error)
-    else:
-        pb2_attributes = None
-    return pb2_attributes

@@ -11,17 +11,12 @@ from snowflake.telemetry.serialize import (
 )
 
 
-class Resource(MessageMarshaler):
-    def __init__(
-        self,
-        attributes: List[MessageMarshaler] = None,
-        dropped_attributes_count: int = 0,
-    ):
-        self.attributes = attributes
-        self.dropped_attributes_count = dropped_attributes_count
-
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.dropped_attributes_count:
-            proto_serializer.serialize_uint32(b"\x10", self.dropped_attributes_count)
-        if self.attributes:
-            proto_serializer.serialize_repeated_message(b"\n", self.attributes)
+def write_to_Resource(
+    proto_serializer: ProtoSerializer,
+    attributes: List[MessageMarshaler] = None,
+    dropped_attributes_count: int = 0,
+):
+    if dropped_attributes_count:
+        proto_serializer.serialize_uint32(b"\x10", dropped_attributes_count)
+    if attributes:
+        proto_serializer.serialize_repeated_message(b"\n", attributes)

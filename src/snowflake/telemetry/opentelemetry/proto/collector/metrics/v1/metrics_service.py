@@ -11,41 +11,28 @@ from snowflake.telemetry.serialize import (
 )
 
 
-class ExportMetricsServiceRequest(MessageMarshaler):
-    def __init__(
-        self,
-        resource_metrics: List[MessageMarshaler] = None,
-    ):
-        self.resource_metrics = resource_metrics
-
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.resource_metrics:
-            proto_serializer.serialize_repeated_message(b"\n", self.resource_metrics)
+def write_to_ExportMetricsServiceRequest(
+    proto_serializer: ProtoSerializer,
+    resource_metrics: List[MessageMarshaler] = None,
+):
+    if resource_metrics:
+        proto_serializer.serialize_repeated_message(b"\n", resource_metrics)
 
 
-class ExportMetricsServiceResponse(MessageMarshaler):
-    def __init__(
-        self,
-        partial_success: MessageMarshaler = None,
-    ):
-        self.partial_success = partial_success
-
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.partial_success:
-            proto_serializer.serialize_message(b"\n", self.partial_success)
+def write_to_ExportMetricsServiceResponse(
+    proto_serializer: ProtoSerializer,
+    partial_success: MessageMarshaler = None,
+):
+    if partial_success:
+        proto_serializer.serialize_message(b"\n", partial_success)
 
 
-class ExportMetricsPartialSuccess(MessageMarshaler):
-    def __init__(
-        self,
-        rejected_data_points: int = 0,
-        error_message: str = "",
-    ):
-        self.rejected_data_points = rejected_data_points
-        self.error_message = error_message
-
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.error_message:
-            proto_serializer.serialize_string(b"\x12", self.error_message)
-        if self.rejected_data_points:
-            proto_serializer.serialize_int64(b"\x08", self.rejected_data_points)
+def write_to_ExportMetricsPartialSuccess(
+    proto_serializer: ProtoSerializer,
+    rejected_data_points: int = 0,
+    error_message: str = "",
+):
+    if error_message:
+        proto_serializer.serialize_string(b"\x12", error_message)
+    if rejected_data_points:
+        proto_serializer.serialize_int64(b"\x08", rejected_data_points)

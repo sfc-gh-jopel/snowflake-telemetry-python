@@ -5,12 +5,12 @@ import google_benchmark as benchmark
 from snowflake.telemetry.test.metrictestutil import _generate_gauge, _generate_sum
 
 from snowflake.telemetry.opentelemetry.exporter.otlp.proto.common._log_encoder import encode_logs
-from snowflake.telemetry.opentelemetry.exporter.otlp.proto.common.metrics_encoder import encode_metrics
-from snowflake.telemetry.opentelemetry.exporter.otlp.proto.common.trace_encoder import encode_spans
+# from snowflake.telemetry.opentelemetry.exporter.otlp.proto.common.metrics_encoder import encode_metrics
+# from snowflake.telemetry.opentelemetry.exporter.otlp.proto.common.trace_encoder import encode_spans
 
 from opentelemetry.exporter.otlp.proto.common._log_encoder import encode_logs as pb2_encode_logs
-from opentelemetry.exporter.otlp.proto.common.metrics_encoder import encode_metrics as pb2_encode_metrics
-from opentelemetry.exporter.otlp.proto.common.trace_encoder import encode_spans as pb2_encode_spans
+# from opentelemetry.exporter.otlp.proto.common.metrics_encoder import encode_metrics as pb2_encode_metrics
+# from opentelemetry.exporter.otlp.proto.common.trace_encoder import encode_spans as pb2_encode_spans
 
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.util.instrumentation import InstrumentationScope
@@ -297,7 +297,7 @@ def get_traces_data() -> Sequence[_Span]:
 def test_bm_serialize_logs_data(state):
     logs_data = get_logs_data()
     while state:
-        bytes(encode_logs(logs_data))
+        encode_logs(logs_data)
 
 @benchmark.register
 def test_bm_pb2_serialize_logs_data(state):
@@ -305,29 +305,29 @@ def test_bm_pb2_serialize_logs_data(state):
     while state:
         pb2_encode_logs(logs_data).SerializeToString()
 
-@benchmark.register
-def test_bm_serialize_metrics_data(state):
-    metrics_data = get_metrics_data()
-    while state:
-        bytes(encode_metrics(metrics_data))
+# @benchmark.register
+# def test_bm_serialize_metrics_data(state):
+#     metrics_data = get_metrics_data()
+#     while state:
+#         bytes(encode_metrics(metrics_data))
 
-@benchmark.register
-def test_bm_pb2_serialize_metrics_data(state):
-    metrics_data = get_metrics_data()
-    while state:
-        pb2_encode_metrics(metrics_data).SerializeToString()
+# @benchmark.register
+# def test_bm_pb2_serialize_metrics_data(state):
+#     metrics_data = get_metrics_data()
+#     while state:
+#         pb2_encode_metrics(metrics_data).SerializeToString()
 
-@benchmark.register
-def test_bm_serialize_traces_data(state):
-    traces_data = get_traces_data()
-    while state:
-        bytes(encode_spans(traces_data))
+# @benchmark.register
+# def test_bm_serialize_traces_data(state):
+#     traces_data = get_traces_data()
+#     while state:
+#         bytes(encode_spans(traces_data))
 
-@benchmark.register
-def test_bm_pb2_serialize_traces_data(state):
-    traces_data = get_traces_data()
-    while state:
-        pb2_encode_spans(traces_data).SerializeToString()
+# @benchmark.register
+# def test_bm_pb2_serialize_traces_data(state):
+#     traces_data = get_traces_data()
+#     while state:
+#         pb2_encode_spans(traces_data).SerializeToString()
 
 """
 Before:

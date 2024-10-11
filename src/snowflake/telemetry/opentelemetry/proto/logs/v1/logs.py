@@ -44,101 +44,72 @@ class LogRecordFlags(Enum):
     LOG_RECORD_FLAGS_TRACE_FLAGS_MASK = 255
 
 
-class LogsData(MessageMarshaler):
-    def __init__(
-        self,
-        resource_logs: List[MessageMarshaler] = None,
-    ):
-        self.resource_logs = resource_logs
-
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.resource_logs:
-            proto_serializer.serialize_repeated_message(b"\n", self.resource_logs)
+def write_to_LogsData(
+    proto_serializer: ProtoSerializer,
+    resource_logs: List[MessageMarshaler] = None,
+):
+    if resource_logs:
+        proto_serializer.serialize_repeated_message(b"\n", resource_logs)
 
 
-class ResourceLogs(MessageMarshaler):
-    def __init__(
-        self,
-        resource: MessageMarshaler = None,
-        scope_logs: List[MessageMarshaler] = None,
-        schema_url: str = "",
-    ):
-        self.resource = resource
-        self.scope_logs = scope_logs
-        self.schema_url = schema_url
-
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.schema_url:
-            proto_serializer.serialize_string(b"\x1a", self.schema_url)
-        if self.scope_logs:
-            proto_serializer.serialize_repeated_message(b"\x12", self.scope_logs)
-        if self.resource:
-            proto_serializer.serialize_message(b"\n", self.resource)
+def write_to_ResourceLogs(
+    proto_serializer: ProtoSerializer,
+    resource: MessageMarshaler = None,
+    scope_logs: List[MessageMarshaler] = None,
+    schema_url: str = "",
+):
+    if schema_url:
+        proto_serializer.serialize_string(b"\x1a", schema_url)
+    if scope_logs:
+        proto_serializer.serialize_repeated_message(b"\x12", scope_logs)
+    if resource:
+        proto_serializer.serialize_message(b"\n", resource)
 
 
-class ScopeLogs(MessageMarshaler):
-    def __init__(
-        self,
-        scope: MessageMarshaler = None,
-        log_records: List[MessageMarshaler] = None,
-        schema_url: str = "",
-    ):
-        self.scope = scope
-        self.log_records = log_records
-        self.schema_url = schema_url
-
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.schema_url:
-            proto_serializer.serialize_string(b"\x1a", self.schema_url)
-        if self.log_records:
-            proto_serializer.serialize_repeated_message(b"\x12", self.log_records)
-        if self.scope:
-            proto_serializer.serialize_message(b"\n", self.scope)
+def write_to_ScopeLogs(
+    proto_serializer: ProtoSerializer,
+    scope: MessageMarshaler = None,
+    log_records: List[MessageMarshaler] = None,
+    schema_url: str = "",
+):
+    if schema_url:
+        proto_serializer.serialize_string(b"\x1a", schema_url)
+    if log_records:
+        proto_serializer.serialize_repeated_message(b"\x12", log_records)
+    if scope:
+        proto_serializer.serialize_message(b"\n", scope)
 
 
-class LogRecord(MessageMarshaler):
-    def __init__(
-        self,
-        time_unix_nano: int = 0,
-        severity_number: int = 0,
-        severity_text: str = "",
-        body: MessageMarshaler = None,
-        attributes: List[MessageMarshaler] = None,
-        dropped_attributes_count: int = 0,
-        flags: int = 0,
-        trace_id: bytes = b"",
-        span_id: bytes = b"",
-        observed_time_unix_nano: int = 0,
-    ):
-        self.time_unix_nano = time_unix_nano
-        self.severity_number = severity_number
-        self.severity_text = severity_text
-        self.body = body
-        self.attributes = attributes
-        self.dropped_attributes_count = dropped_attributes_count
-        self.flags = flags
-        self.trace_id = trace_id
-        self.span_id = span_id
-        self.observed_time_unix_nano = observed_time_unix_nano
-
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
-        if self.observed_time_unix_nano:
-            proto_serializer.serialize_fixed64(b"Y", self.observed_time_unix_nano)
-        if self.span_id:
-            proto_serializer.serialize_bytes(b"R", self.span_id)
-        if self.trace_id:
-            proto_serializer.serialize_bytes(b"J", self.trace_id)
-        if self.flags:
-            proto_serializer.serialize_fixed32(b"E", self.flags)
-        if self.dropped_attributes_count:
-            proto_serializer.serialize_uint32(b"8", self.dropped_attributes_count)
-        if self.attributes:
-            proto_serializer.serialize_repeated_message(b"2", self.attributes)
-        if self.body:
-            proto_serializer.serialize_message(b"*", self.body)
-        if self.severity_text:
-            proto_serializer.serialize_string(b"\x1a", self.severity_text)
-        if self.severity_number:
-            proto_serializer.serialize_enum(b"\x10", self.severity_number)
-        if self.time_unix_nano:
-            proto_serializer.serialize_fixed64(b"\t", self.time_unix_nano)
+def write_to_LogRecord(
+    proto_serializer: ProtoSerializer,
+    time_unix_nano: int = 0,
+    severity_number: int = 0,
+    severity_text: str = "",
+    body: MessageMarshaler = None,
+    attributes: List[MessageMarshaler] = None,
+    dropped_attributes_count: int = 0,
+    flags: int = 0,
+    trace_id: bytes = b"",
+    span_id: bytes = b"",
+    observed_time_unix_nano: int = 0,
+):
+    if observed_time_unix_nano:
+        proto_serializer.serialize_fixed64(b"Y", observed_time_unix_nano)
+    if span_id:
+        proto_serializer.serialize_bytes(b"R", span_id)
+    if trace_id:
+        proto_serializer.serialize_bytes(b"J", trace_id)
+    if flags:
+        proto_serializer.serialize_fixed32(b"E", flags)
+    if dropped_attributes_count:
+        proto_serializer.serialize_uint32(b"8", dropped_attributes_count)
+    if attributes:
+        proto_serializer.serialize_repeated_message(b"2", attributes)
+    if body:
+        proto_serializer.serialize_message(b"*", body)
+    if severity_text:
+        proto_serializer.serialize_string(b"\x1a", severity_text)
+    if severity_number:
+        proto_serializer.serialize_enum(b"\x10", severity_number)
+    if time_unix_nano:
+        proto_serializer.serialize_fixed64(b"\t", time_unix_nano)
