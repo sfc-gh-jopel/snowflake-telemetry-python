@@ -31,7 +31,9 @@ from snowflake.telemetry.serialize import ProtoSerializer
 def encode_logs(batch: Sequence[LogData]) -> None:
     proto_serializer = ProtoSerializer()
 
-    _encode_resource_logs(proto_serializer, batch)
+    resource_logs = _process_resource_logs(batch)
+    for resource_log in resource_logs:
+        proto_serializer.serialize_message(b"\n", _encode_resource_logs, resource_log)
 
     return bytes(proto_serializer)
 
@@ -69,9 +71,10 @@ def _encode_log(proto_serializer: ProtoSerializer, log_data: LogData) -> None:
     if dropped_attributes_count:
         proto_serializer.serialize_uint32(b"8", dropped_attributes_count)
     
-    _encode_attributes(proto_serializer, attributes)
+    _encode_attributes(b"2", proto_serializer, attributes)
 
-    _encode_value(proto_serializer, body)
+    if body:
+        proto_serializer.serialize_message(b"*", _encode_value, body)
 
     if severity_text:
         proto_serializer.serialize_string(b"\x1a", severity_text)
@@ -82,7 +85,7 @@ def _encode_log(proto_serializer: ProtoSerializer, log_data: LogData) -> None:
 
 
 
-def _encode_resource_logs(proto_serializer, batch: Sequence[LogData]) -> List[None]:
+def _process_resource_logs(batch: Sequence[LogData]) -> List[tuple]:
     sdk_resource_logs = defaultdict(lambda: defaultdict(list))
 
     for sdk_log in batch:
@@ -102,18 +105,20 @@ def _encode_resource_logs(proto_serializer, batch: Sequence[LogData]) -> List[No
         pb2_resource_logs.append(
             (sdk_resource, scope_logs)
         )
+    return pb2_resource_logs
 
-    for resource_log in pb2_resource_logs:
-        resource, scope_logs = resource_log
+def _encode_resource_logs(proto_serializer: ProtoSerializer,resource_log) -> None:
+    resource, scope_logs = resource_log
 
-        schema_url = resource.schema_url
-        _encode_resource(proto_serializer, resource)
-        if schema_url:
-            proto_serializer.serialize_string(b"\x1a", schema_url)
-        
-        for scope_log in scope_logs:
-            instrumentation, logs = scope_log
-            if instrumentation:
-                _encode_instrumentation_scope(proto_serializer, instrumentation)
-            for log in logs:
-                _encode_log(proto_serializer, log)
+    schema_url = resource.schema_url
+    if resource:
+        proto_serializer.serialize_message(b"\n", _encode_resource, resource)
+    if schema_url:
+        proto_serializer.serialize_string(b"\x1a", schema_url)
+    
+    for scope_log in scope_logs:
+        instrumentation, logs = scope_log
+        if instrumentation:
+            proto_serializer.serialize_message(b"\n", _encode_instrumentation_scope, instrumentation)
+        for log in logs:
+            proto_serializer.serialize_message(b"\x12", _encode_log, log)

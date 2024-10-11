@@ -51,10 +51,10 @@ def _encode_instrumentation_scope(
 
 
 def _encode_resource(proto_serializer, resource: Resource) -> None:
-    _encode_attributes(proto_serializer, resource.attributes)
+    _encode_attributes(b"\n", proto_serializer, resource.attributes)
 
 
-def _encode_value(proto_serializer, value: Any) -> None:
+def _encode_value(proto_serializer: ProtoSerializer, value: Any) -> None:
     if isinstance(value, bool):
         proto_serializer.serialize_bool(b"\x10", value)
     elif isinstance(value, str):
@@ -64,18 +64,25 @@ def _encode_value(proto_serializer, value: Any) -> None:
     elif isinstance(value, float):
         proto_serializer.serialize_double(b"!", value)
     elif isinstance(value, Sequence):
-        for v in value:
-            _encode_value(proto_serializer, v)
+        proto_serializer.serialize_message(b"*", _encode_array_value, value)
     elif isinstance(value, Mapping):
-        for k, v in value.items():
-            _encode_key_value(proto_serializer, k, v)
+        proto_serializer.serialize_message(b"2", _encode_kvlist, value)
     else:
         raise Exception(f"Invalid type {type(value)} of value {value}")
 
+def _encode_array_value(proto_serializer: ProtoSerializer, values: List[Any]) -> None:
+    for value in values:
+        proto_serializer.serialize_message(b"\n", _encode_value, value)
+    
+def _encode_kvlist(proto_serializer: ProtoSerializer, values: Mapping[str, Any]) -> None:
+    for key, value in values.items():
+        proto_serializer.serialize_message(b"\n", _encode_key_value, key, value)
 
-def _encode_key_value(proto_serializer, key: str, value: Any) -> None:
-    proto_serializer.serialize_string(b"\n", key)
-    _encode_value(proto_serializer, value)
+def _encode_key_value(proto_serializer: ProtoSerializer, key: str, value: Any) -> None:
+    if key:
+        proto_serializer.serialize_string(b"\n", key)
+    if value:
+        proto_serializer.serialize_message(b"\x12", _encode_value, value)
 
 
 def _encode_span_id(span_id: int) -> bytes:
@@ -87,6 +94,7 @@ def _encode_trace_id(trace_id: int) -> bytes:
 
 
 def _encode_attributes(
+    tag: bytes,
     proto_serializer: ProtoSerializer,
     attributes: Attributes,
 ) -> None:
@@ -94,6 +102,6 @@ def _encode_attributes(
         for key, value in attributes.items():
             # pylint: disable=broad-exception-caught
             try:
-                _encode_key_value(proto_serializer, key, value)
+                proto_serializer.serialize_message(tag, _encode_key_value, key, value)
             except Exception as error:
                 _logger.exception("Failed to encode key %s: %s", key, error)

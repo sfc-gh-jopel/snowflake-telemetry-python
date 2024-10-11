@@ -17,7 +17,7 @@ class ProtoSerializer:
     __slots__ = ("out","buf","i")
 
     def __init__(self) -> None:
-        init = 128
+        init = 2048
         self.out = bytearray(init)
         self.buf = memoryview(self.out)
         self.i = init
@@ -28,8 +28,9 @@ class ProtoSerializer:
     def make_room(self, size: int) -> None:
         if self.i < size:
             self.buf.release()
-            self.i += len(self.out)
-            self.out = bytearray(len(self.out)) + self.out
+            add = max(len(self.out), size)
+            self.i += add
+            self.out = bytearray(add) + self.out
             self.buf = memoryview(self.out)
     
     def serialize_bool(self, tag: bytes, value: bool) -> None:
@@ -139,33 +140,17 @@ class ProtoSerializer:
     def serialize_message(
             self, 
             tag: bytes, 
-            value: MessageMarshaler,
+            encode_func: Callable, 
+            *args, 
+            **kwargs,
         ) -> None:
-        # If value is None, omit message entirely
-        if value is None:
-            return
-        # Otherwise, write the message
-        # Even if all fields are default (ommnited)
-        # The presence of the message is still encoded
-        before = self.i
-        value.write_to(self)
+        before = self.i # when it gets resized this is messed up, so size needs to be tracked seperately
+        encode_func(self, *args, **kwargs)
         after = self.i
         self.make_room(len(tag) + 10)
         self._write_varint_unsigned(before - after)
         self.buf[self.i-len(tag):self.i] = tag
         self.i -= len(tag)
-
-    def serialize_repeated_message(
-            self, 
-            tag: bytes, 
-            values: List[MessageMarshaler],
-        ) -> None:
-        if not values:
-            return
-        # local reference to avoid repeated lookups
-        _self_serialize = self.serialize_message
-        for value in reversed(values):
-            _self_serialize(tag, value)
     
     def serialize_repeated_packed(
             self, 
