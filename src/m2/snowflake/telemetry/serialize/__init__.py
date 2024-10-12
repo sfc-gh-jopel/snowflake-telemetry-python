@@ -125,7 +125,7 @@ class ProtoSerializer:
         self.i -= len(tag)
     
     def serialize_bytes(self, tag: bytes, value: bytes) -> None:
-        self.make_room(len(value))
+        self.make_room(len(value) + 10 + len(tag))
         self.buf[self.i-len(value):self.i] = value
         self.i -= len(value)
         self._write_varint_unsigned(len(value))
