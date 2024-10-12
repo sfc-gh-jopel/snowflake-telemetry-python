@@ -65,7 +65,7 @@ def ResourceLogs(
     schema_url: Optional[str] = None,
 ) -> bytes:
     proto_serializer = ProtoSerializer()
-    if resource:
+    if resource is not None:
         proto_serializer.serialize_message(b"\n", resource)
     if scope_logs:
         proto_serializer.serialize_repeated_message(b"\x12", scope_logs)
@@ -80,7 +80,7 @@ def ScopeLogs(
     schema_url: Optional[str] = None,
 ) -> bytes:
     proto_serializer = ProtoSerializer()
-    if scope:
+    if scope is not None:
         proto_serializer.serialize_message(b"\n", scope)
     if log_records:
         proto_serializer.serialize_repeated_message(b"\x12", log_records)
@@ -108,7 +108,7 @@ def LogRecord(
         proto_serializer.serialize_enum(b"\x10", severity_number)
     if severity_text:
         proto_serializer.serialize_string(b"\x1a", severity_text)
-    if body:
+    if body is not None:
         proto_serializer.serialize_message(b"*", body)
     if attributes:
         proto_serializer.serialize_repeated_message(b"2", attributes)

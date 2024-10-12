@@ -172,14 +172,33 @@ def test_bm_m4_serialize_logs_data(state):
         m4_encode_logs(logs_data)
 
 if __name__ == "__main__":
+    logs_data = get_logs_data()
+
+    m0 = lambda : m0_encode_logs(logs_data).SerializeToString()
+    m1 = lambda : bytes(m1_encode_logs(logs_data))
+    m2 = lambda : bytes(m2_encode_logs(logs_data))
+    m3 = lambda : m3_encode_logs(logs_data)
+    m4 = lambda : m4_encode_logs(logs_data)
+
+    methods = {
+        "m0": m0,
+        "m1": m1,
+        "m2": m2,
+        "m3": m3,
+        "m4": m4,
+    }
+
+    # Sanity check
+    for name, lmbda in methods.items():
+        if name == "m3":
+            continue
+        print(f"Checking {name}")
+        assert lmbda() == m0()
+
     # CPU profiling
     import cProfile
-    logs_data = get_logs_data()
-    cProfile.runctx("for _ in range(1000): bytes(m1_encode_logs(logs_data))", globals(), locals(), filename="m1_encode_logs.prof")
-    cProfile.runctx("for _ in range(1000): bytes(m2_encode_logs(logs_data))", globals(), locals(), filename="m2_encode_logs.prof")
-    cProfile.runctx("for _ in range(1000): m3_encode_logs(logs_data)", globals(), locals(), filename="m3_encode_logs.prof")
-    cProfile.runctx("for _ in range(1000): m4_encode_logs(logs_data)", globals(), locals(), filename="m4_encode_logs.prof")
-
+    for name, lmbda in methods.items():
+        cProfile.runctx(f"for _ in range(1000): {name}()", globals(), locals(), filename=f"{name}_encode_logs.prof")
 
     # MEMORY profiling
     import tracemalloc
@@ -191,10 +210,9 @@ if __name__ == "__main__":
         print(f"{name}: (curr, peak)={tracemalloc.get_traced_memory()}; ")
         tracemalloc.stop()
     
-    trace_malloc_func(lambda: bytes(m1_encode_logs(logs_data)), "m1_encode_logs")
-    trace_malloc_func(lambda: bytes(m2_encode_logs(logs_data)), "m2_encode_logs")
-    trace_malloc_func(lambda: m3_encode_logs(logs_data), "m3_encode_logs")
-    trace_malloc_func(lambda: m4_encode_logs(logs_data), "m4_encode_logs")
-
+    for name, lmbda in methods.items():
+        trace_malloc_func(lmbda, f"{name}_encode_logs.prof")
+        
+    
     # Benchmark
     benchmark.main()

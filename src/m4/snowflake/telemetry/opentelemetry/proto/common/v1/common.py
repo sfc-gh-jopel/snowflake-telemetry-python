@@ -70,7 +70,7 @@ def KeyValue(
     proto_serializer = ProtoSerializer()
     if key:
         proto_serializer.serialize_string(b"\n", key)
-    if value:
+    if value is not None:
         proto_serializer.serialize_message(b"\x12", value)
     return proto_serializer.out
 
