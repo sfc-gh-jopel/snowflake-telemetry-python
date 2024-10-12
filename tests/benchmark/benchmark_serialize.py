@@ -184,7 +184,7 @@ if __name__ == "__main__":
     m3 = lambda : m3_encode_logs(logs_data)
 
     # need to add compiler condition to check None for message types, not falsiness
-    m4 = lambda : m4_encode_logs(logs_data)
+    m4 = lambda : bytes(m4_encode_logs(logs_data))
 
     methods = {
         "m0": m0,
@@ -200,18 +200,19 @@ if __name__ == "__main__":
             continue
         print(f"Checking {name}")
         assert lmbda() == m0()
+        assert isinstance(lmbda(), bytes)
 
     # CPU profiling
     import cProfile
     for name, lmbda in methods.items():
-        cProfile.runctx(f"for _ in range(1000): {name}()", globals(), locals(), filename=f"{name}_encode_logs.prof")
+        cProfile.runctx(f"for _ in range(1): {name}()", globals(), locals(), filename=f"{name}_encode_logs.prof")
 
     # MEMORY profiling
     import tracemalloc
     
     def trace_malloc_func(func, name):
         tracemalloc.start()
-        for _ in range(1000):
+        for _ in range(1):
             func()
         print(f"{name}: (curr, peak)={tracemalloc.get_traced_memory()}; ")
         tracemalloc.stop()
