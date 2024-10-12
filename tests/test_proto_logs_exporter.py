@@ -11,10 +11,10 @@ from opentelemetry.proto.logs.v1.logs_pb2 import (
     SEVERITY_NUMBER_ERROR,
     SEVERITY_NUMBER_FATAL,
 )
-from snowflake.telemetry._internal.exporter.otlp.proto.logs import (
+from m1.snowflake.telemetry._internal.exporter.otlp.proto.logs import (
     SnowflakeLoggingHandler,
 )
-from snowflake.telemetry.test.logs_test_utils import InMemoryLogWriter
+from m1.snowflake.telemetry.test.logs_test_utils import InMemoryLogWriter
 
 
 class TestSnowflakeLoggingHandler(unittest.TestCase):

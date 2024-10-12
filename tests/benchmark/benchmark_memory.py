@@ -1,7 +1,7 @@
 import unittest
 from typing import Sequence
 
-from snowflake.telemetry._internal.exporter.otlp.proto.logs import encode_logs
+from m1.snowflake.telemetry._internal.exporter.otlp.proto.logs import encode_logs
 
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.util.instrumentation import InstrumentationScope

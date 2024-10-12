@@ -4,7 +4,7 @@ from setuptools import (
 )
 
 DESCRIPTION = 'Snowflake Telemetry Test Utils'
-LONG_DESCRIPTION = 'This package provides test utils for testing snowflake-telemetry-python'
+LONG_DESCRIPTION = 'This package provides test utils for testing snowflake.telemetry-python'
 
 
 setup(

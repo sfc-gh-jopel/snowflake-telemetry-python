@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch
 
 from opentelemetry import trace
-from snowflake.telemetry.trace import SnowflakeTraceIdGenerator
+from m1.snowflake.telemetry.trace import SnowflakeTraceIdGenerator
 
 MOCK_TIMESTAMP = 1719588243.3379807
 INVALID_TRACE_ID = 0x00000000000000000000000000000000

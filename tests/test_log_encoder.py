@@ -22,7 +22,7 @@ from opentelemetry.exporter.otlp.proto.common._internal import (
     _encode_trace_id,
     _encode_value,
 )
-from snowflake.telemetry.opentelemetry.exporter.otlp.proto.common._log_encoder import encode_logs
+from m1.snowflake.telemetry.opentelemetry.exporter.otlp.proto.common._log_encoder import encode_logs
 from opentelemetry.proto.collector.logs.v1.logs_service_pb2 import (
     ExportLogsServiceRequest,
 )
@@ -44,10 +44,10 @@ from opentelemetry.sdk._logs import LogData, LogLimits, LogRecord as SDKLogRecor
 from opentelemetry.sdk.resources import Resource as SDKResource
 from opentelemetry.sdk.util.instrumentation import InstrumentationScope
 from opentelemetry.trace import TraceFlags
-from snowflake.telemetry._internal.exporter.otlp.proto.logs import (
+from m1.snowflake.telemetry._internal.exporter.otlp.proto.logs import (
     _ProtoLogExporter,
 )
-from snowflake.telemetry.test.logs_test_utils import (
+from m1.snowflake.telemetry.test.logs_test_utils import (
     InMemoryLogWriter,
 )
 

@@ -15,7 +15,7 @@
 # pylint: disable=protected-access
 import unittest
 
-from snowflake.telemetry.opentelemetry.exporter.otlp.proto.common.metrics_encoder import (
+from m1.snowflake.telemetry.opentelemetry.exporter.otlp.proto.common.metrics_encoder import (
     encode_metrics,
 )
 from opentelemetry.proto.collector.metrics.v1.metrics_service_pb2 import (
@@ -45,13 +45,13 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.util.instrumentation import (
     InstrumentationScope as SDKInstrumentationScope,
 )
-from snowflake.telemetry._internal.exporter.otlp.proto.metrics import (
+from m1.snowflake.telemetry._internal.exporter.otlp.proto.metrics import (
     ProtoMetricExporter,
 )
-from snowflake.telemetry.test.metrics_test_utils import (
+from m1.snowflake.telemetry.test.metrics_test_utils import (
     InMemoryMetricWriter,
 )
-from snowflake.telemetry.test.metrictestutil import _generate_gauge, _generate_sum
+from m1.snowflake.telemetry.test.metrictestutil import _generate_gauge, _generate_sum
 
 
 class TestOTLPMetricsEncoder(unittest.TestCase):

@@ -1,5 +1,5 @@
 """
-Tests for Snowflake Telemetry Python.
+Tests for snowflake.telemetry Python.
 """
 import unittest
 

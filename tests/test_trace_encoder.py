@@ -25,7 +25,7 @@ from opentelemetry.exporter.otlp.proto.common._internal.trace_encoder import (
     _SPAN_KIND_MAP,
     _encode_status,
 )
-from snowflake.telemetry.opentelemetry.exporter.otlp.proto.common.trace_encoder import encode_spans
+from m1.snowflake.telemetry.opentelemetry.exporter.otlp.proto.common.trace_encoder import encode_spans
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest as PB2ExportTraceServiceRequest,
 )
@@ -57,10 +57,10 @@ from opentelemetry.trace import SpanKind as SDKSpanKind
 from opentelemetry.trace import TraceFlags as SDKTraceFlags
 from opentelemetry.trace.status import Status as SDKStatus
 from opentelemetry.trace.status import StatusCode as SDKStatusCode
-from snowflake.telemetry._internal.exporter.otlp.proto.traces import (
+from m1.snowflake.telemetry._internal.exporter.otlp.proto.traces import (
     ProtoSpanExporter,
 )
-from snowflake.telemetry.test.traces_test_utils import (
+from m1.snowflake.telemetry.test.traces_test_utils import (
     InMemorySpanWriter,
 )
 

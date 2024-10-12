@@ -4,13 +4,11 @@ import google_benchmark as benchmark
 
 from snowflake.telemetry.test.metrictestutil import _generate_gauge, _generate_sum
 
-from snowflake.telemetry.opentelemetry.exporter.otlp.proto.common._log_encoder import encode_logs
-from snowflake.telemetry.opentelemetry.exporter.otlp.proto.common.metrics_encoder import encode_metrics
-from snowflake.telemetry.opentelemetry.exporter.otlp.proto.common.trace_encoder import encode_spans
-
-from opentelemetry.exporter.otlp.proto.common._log_encoder import encode_logs as pb2_encode_logs
-from opentelemetry.exporter.otlp.proto.common.metrics_encoder import encode_metrics as pb2_encode_metrics
-from opentelemetry.exporter.otlp.proto.common.trace_encoder import encode_spans as pb2_encode_spans
+from opentelemetry.exporter.otlp.proto.common._log_encoder import encode_logs as m0_encode_logs
+from m1.snowflake.telemetry.opentelemetry.exporter.otlp.proto.common._log_encoder import encode_logs as m1_encode_logs
+from m2.snowflake.telemetry.opentelemetry.exporter.otlp.proto.common._log_encoder import encode_logs as m2_encode_logs
+from m3.snowflake.telemetry.opentelemetry.exporter.otlp.proto.common._log_encoder import encode_logs as m3_encode_logs
+from m4.snowflake.telemetry.opentelemetry.exporter.otlp.proto.common._log_encoder import encode_logs as m4_encode_logs
 
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.util.instrumentation import InstrumentationScope
@@ -136,222 +134,67 @@ HISTOGRAM = Metric(
         aggregation_temporality=AggregationTemporality.DELTA,
     ),
 )
-def get_metrics_data() -> MetricsData:
-    metrics1 = MetricsData(
-        resource_metrics=[
-            ResourceMetrics(
-                resource=Resource(
-                    attributes={"a": 1, "b": False},
-                    schema_url="resource_schema_url",
-                ),
-                scope_metrics=[
-                    ScopeMetrics(
-                        scope=InstrumentationScope(
-                            name="first_name",
-                            version="first_version",
-                            schema_url="insrumentation_scope_schema_url",
-                        ),
-                        metrics=[_generate_sum("sum_int", 33)],
-                        schema_url="instrumentation_scope_schema_url",
-                    )
-                ],
-                schema_url="resource_schema_url",
-            )
-        ]
-    )
 
-    metrics2 = MetricsData(
-        resource_metrics=[
-            ResourceMetrics(
-                resource=Resource(
-                    attributes={"a": 1, "b": False},
-                    schema_url="resource_schema_url",
-                ),
-                scope_metrics=[
-                    ScopeMetrics(
-                        scope=InstrumentationScope(
-                            name="first_name",
-                            version="first_version",
-                            schema_url="insrumentation_scope_schema_url",
-                        ),
-                        metrics=[HISTOGRAM, HISTOGRAM],
-                        schema_url="instrumentation_scope_schema_url",
-                    ),
-                    ScopeMetrics(
-                        scope=InstrumentationScope(
-                            name="second_name",
-                            version="second_version",
-                            schema_url="insrumentation_scope_schema_url",
-                        ),
-                        metrics=[HISTOGRAM],
-                        schema_url="instrumentation_scope_schema_url",
-                    ),
-                    ScopeMetrics(
-                        scope=InstrumentationScope(
-                            name="third_name",
-                            version="third_version",
-                            schema_url="insrumentation_scope_schema_url",
-                        ),
-                        metrics=[HISTOGRAM],
-                        schema_url="instrumentation_scope_schema_url",
-                    ),
-                ],
-                schema_url="resource_schema_url",
-            )
-        ]
-    )
-
-    return metrics1
-
-def get_traces_data() -> Sequence[_Span]:
-    trace_id = 0x3E0C63257DE34C926F9EFCD03927272E
-
-    base_time = 683647322 * 10**9  # in ns
-    start_times = (
-        base_time,
-        base_time + 150 * 10**6,
-        base_time + 300 * 10**6,
-        base_time + 400 * 10**6,
-    )
-    end_times = (
-        start_times[0] + (50 * 10**6),
-        start_times[1] + (100 * 10**6),
-        start_times[2] + (200 * 10**6),
-        start_times[3] + (300 * 10**6),
-    )
-
-    parent_span_context = SpanContext(
-        trace_id, 0x1111111111111111, is_remote=True
-    )
-
-    other_context = SpanContext(
-        trace_id, 0x2222222222222222, is_remote=False
-    )
-
-    span1 = _Span(
-        name="test-span-1",
-        context=SpanContext(
-            trace_id,
-            0x34BF92DEEFC58C92,
-            is_remote=False,
-            trace_flags=TraceFlags(TraceFlags.SAMPLED),
-        ),
-        parent=parent_span_context,
-        events=(
-            Event(
-                name="event0",
-                timestamp=base_time + 50 * 10**6,
-                attributes={
-                    "annotation_bool": True,
-                    "annotation_string": "annotation_test",
-                    "key_float": 0.3,
-                },
-            ),
-        ),
-        links=(
-            Link(context=other_context, attributes={"key_bool": True}),
-        ),
-        resource=Resource({}, "resource_schema_url"),
-    )
-    span1.start(start_time=start_times[0])
-    span1.set_attribute("key_bool", False)
-    span1.set_attribute("key_string", "hello_world")
-    span1.set_attribute("key_float", 111.22)
-    span1.set_status(Status(StatusCode.ERROR, "Example description"))
-    span1.end(end_time=end_times[0])
-
-    span2 = _Span(
-        name="test-span-2",
-        context=parent_span_context,
-        parent=None,
-        resource=Resource(attributes={"key_resource": "some_resource"}),
-    )
-    span2.start(start_time=start_times[1])
-    span2.end(end_time=end_times[1])
-
-    span3 = _Span(
-        name="test-span-3",
-        context=other_context,
-        parent=None,
-        resource=Resource(attributes={"key_resource": "some_resource"}),
-    )
-    span3.start(start_time=start_times[2])
-    span3.set_attribute("key_string", "hello_world")
-    span3.end(end_time=end_times[2])
-
-    span4 = _Span(
-        name="test-span-4",
-        context=other_context,
-        parent=None,
-        resource=Resource({}, "resource_schema_url"),
-        instrumentation_scope=InstrumentationScope(
-            name="name", version="version"
-        ),
-    )
-    span4.start(start_time=start_times[3])
-    span4.end(end_time=end_times[3])
-
-    return [span1, span2, span3, span4]
 
 @benchmark.register
-def test_bm_serialize_logs_data(state):
+def test_bm_m0_serialize_logs_data(state):
+    # ORIGINAL
     logs_data = get_logs_data()
     while state:
-        bytes(encode_logs(logs_data))
+        m0_encode_logs(logs_data).SerializeToString()
 
 @benchmark.register
-def test_bm_pb2_serialize_logs_data(state):
+def test_bm_m1_serialize_logs_data(state):
+    # FORWARD
     logs_data = get_logs_data()
     while state:
-        pb2_encode_logs(logs_data).SerializeToString()
+        bytes(m1_encode_logs(logs_data))
 
 @benchmark.register
-def test_bm_serialize_metrics_data(state):
-    metrics_data = get_metrics_data()
+def test_bm_m2_serialize_logs_data(state):
+    # BACKWARD
+    logs_data = get_logs_data()
     while state:
-        bytes(encode_metrics(metrics_data))
+        bytes(m2_encode_logs(logs_data))
 
 @benchmark.register
-def test_bm_pb2_serialize_metrics_data(state):
-    metrics_data = get_metrics_data()
+def test_bm_m3_serialize_logs_data(state):
+    # BACKWARD NO OBJECTS
+    logs_data = get_logs_data()
     while state:
-        pb2_encode_metrics(metrics_data).SerializeToString()
+        m3_encode_logs(logs_data)
 
 @benchmark.register
-def test_bm_serialize_traces_data(state):
-    traces_data = get_traces_data()
+def test_bm_m4_serialize_logs_data(state):
+    # NAIVE
+    logs_data = get_logs_data()
     while state:
-        bytes(encode_spans(traces_data))
-
-@benchmark.register
-def test_bm_pb2_serialize_traces_data(state):
-    traces_data = get_traces_data()
-    while state:
-        pb2_encode_spans(traces_data).SerializeToString()
-
-"""
-Before:
------------------------------------------------------------------------------
-Benchmark                                   Time             CPU   Iterations
------------------------------------------------------------------------------
-test_bm_serialize_logs_data             99991 ns        99984 ns         6996
-test_bm_pb2_serialize_logs_data         96017 ns        96014 ns         7228
-test_bm_serialize_metrics_data          31274 ns        31273 ns        22353
-test_bm_pb2_serialize_metrics_data      30638 ns        30637 ns        22800
-test_bm_serialize_traces_data          122269 ns       122135 ns         5667
-test_bm_pb2_serialize_traces_data      130303 ns       130284 ns         5358
-
-After:
------------------------------------------------------------------------------
-Benchmark                                   Time             CPU   Iterations
------------------------------------------------------------------------------
-test_bm_serialize_logs_data            110767 ns       110759 ns         6323
-test_bm_pb2_serialize_logs_data         96177 ns        96174 ns         7276
-test_bm_serialize_metrics_data          36253 ns        36251 ns        19307
-test_bm_pb2_serialize_metrics_data      30828 ns        30827 ns        22629
-test_bm_serialize_traces_data          133631 ns       133626 ns         5183
-test_bm_pb2_serialize_traces_data      129819 ns       129812 ns         5397
-"""
+        m4_encode_logs(logs_data)
 
 if __name__ == "__main__":
+    # CPU profiling
+    import cProfile
+    logs_data = get_logs_data()
+    cProfile.runctx("for _ in range(1000): bytes(m1_encode_logs(logs_data))", globals(), locals(), filename="m1_encode_logs.prof")
+    cProfile.runctx("for _ in range(1000): bytes(m2_encode_logs(logs_data))", globals(), locals(), filename="m2_encode_logs.prof")
+    cProfile.runctx("for _ in range(1000): m3_encode_logs(logs_data)", globals(), locals(), filename="m3_encode_logs.prof")
+    cProfile.runctx("for _ in range(1000): m4_encode_logs(logs_data)", globals(), locals(), filename="m4_encode_logs.prof")
+
+
+    # MEMORY profiling
+    import tracemalloc
+    
+    def trace_malloc_func(func, name):
+        tracemalloc.start()
+        for _ in range(1000):
+            func()
+        print(f"{name}: (curr, peak)={tracemalloc.get_traced_memory()}; ")
+        tracemalloc.stop()
+    
+    trace_malloc_func(lambda: bytes(m1_encode_logs(logs_data)), "m1_encode_logs")
+    trace_malloc_func(lambda: bytes(m2_encode_logs(logs_data)), "m2_encode_logs")
+    trace_malloc_func(lambda: m3_encode_logs(logs_data), "m3_encode_logs")
+    trace_malloc_func(lambda: m4_encode_logs(logs_data), "m4_encode_logs")
+
+    # Benchmark
     benchmark.main()
