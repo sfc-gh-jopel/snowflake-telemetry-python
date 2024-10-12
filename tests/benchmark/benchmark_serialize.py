@@ -176,8 +176,14 @@ if __name__ == "__main__":
 
     m0 = lambda : m0_encode_logs(logs_data).SerializeToString()
     m1 = lambda : bytes(m1_encode_logs(logs_data))
+
+    # Need to release() memoryview to avoid memory leak
     m2 = lambda : bytes(m2_encode_logs(logs_data))
+
+    # Not exactly equal to the original
     m3 = lambda : m3_encode_logs(logs_data)
+
+    # need to add compiler condition to check None for message types, not falsiness
     m4 = lambda : m4_encode_logs(logs_data)
 
     methods = {
