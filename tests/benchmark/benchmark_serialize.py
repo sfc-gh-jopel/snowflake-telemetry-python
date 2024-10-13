@@ -9,6 +9,7 @@ from m1.snowflake.telemetry.opentelemetry.exporter.otlp.proto.common._log_encode
 from m2.snowflake.telemetry.opentelemetry.exporter.otlp.proto.common._log_encoder import encode_logs as m2_encode_logs
 from m3.snowflake.telemetry.opentelemetry.exporter.otlp.proto.common._log_encoder import encode_logs as m3_encode_logs
 from m4.snowflake.telemetry.opentelemetry.exporter.otlp.proto.common._log_encoder import encode_logs as m4_encode_logs
+from m5.snowflake.telemetry.opentelemetry.exporter.otlp.proto.common._log_encoder import encode_logs as m5_encode_logs
 
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.util.instrumentation import InstrumentationScope
@@ -171,6 +172,13 @@ def test_bm_m4_serialize_logs_data(state):
     while state:
         m4_encode_logs(logs_data)
 
+@benchmark.register
+def test_bm_m5_serialize_logs_data(state):
+    # DICT, FORWARD
+    logs_data = get_logs_data()
+    while state:
+        m5_encode_logs(logs_data)
+
 if __name__ == "__main__":
     logs_data = get_logs_data()
 
@@ -186,12 +194,15 @@ if __name__ == "__main__":
     # need to add compiler condition to check None for message types, not falsiness
     m4 = lambda : bytes(m4_encode_logs(logs_data))
 
+    m5 = lambda : m5_encode_logs(logs_data)
+
     methods = {
         "m0": m0,
         "m1": m1,
         "m2": m2,
         "m3": m3,
         "m4": m4,
+        "m5": m5,
     }
 
     # Sanity check
@@ -205,21 +216,20 @@ if __name__ == "__main__":
     # CPU profiling
     import cProfile
     for name, lmbda in methods.items():
-        cProfile.runctx(f"for _ in range(1): {name}()", globals(), locals(), filename=f"{name}_encode_logs.prof")
+        cProfile.runctx(f"for _ in range(100): {name}()", globals(), locals(), filename=f"{name}_encode_logs.prof")
 
     # MEMORY profiling
     import tracemalloc
     
     def trace_malloc_func(func, name):
         tracemalloc.start()
-        for _ in range(1):
+        for _ in range(100):
             func()
         print(f"{name}: (curr, peak)={tracemalloc.get_traced_memory()}; ")
         tracemalloc.stop()
     
     for name, lmbda in methods.items():
-        trace_malloc_func(lmbda, f"{name}_encode_logs.prof")
-        
+        trace_malloc_func(lmbda, f"{name}")
     
     # Benchmark
     benchmark.main()
