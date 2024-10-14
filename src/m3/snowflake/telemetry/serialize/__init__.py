@@ -34,7 +34,8 @@ class ProtoSerializer:
             self.buf = memoryview(self.out)
     
     def serialize_bool(self, tag: bytes, value: bool) -> None:
-        self.make_room(len(tag) + 1)
+        if self.i < len(tag) + 1:
+            self.make_room(len(tag) + 1)
         self._write_varint_unsigned(1 if value else 0)
         self.buf[self.i-len(tag):self.i] = tag
         self.i -= len(tag)
@@ -42,91 +43,105 @@ class ProtoSerializer:
     def serialize_enum(self, tag: bytes, value: Union[Enum, int]) -> None:
         if not isinstance(value, int):
             value = value.value
-        self.make_room(len(tag) + 10)
+        if self.i < len(tag) + 10:
+            self.make_room(len(tag) + 10)
         self._write_varint_unsigned(value)
         self.buf[self.i-len(tag):self.i] = tag
         self.i -= len(tag)
     
     def serialize_uint32(self, tag: bytes, value: int) -> None:
-        self.make_room(len(tag) + 10)
+        if self.i < len(tag) + 10:
+            self.make_room(len(tag) + 10)
         self._write_varint_unsigned(value)
         self.buf[self.i-len(tag):self.i] = tag
         self.i -= len(tag)
     
     def serialize_uint64(self, tag: bytes, value: int) -> None:
-        self.make_room(len(tag) + 10)
+        if self.i < len(tag) + 10:
+            self.make_room(len(tag) + 10)
         self._write_varint_unsigned(value)
         self.buf[self.i-len(tag):self.i] = tag
         self.i -= len(tag)
     
     def serialize_sint32(self, tag: bytes, value: int) -> None:
-        self.make_room(len(tag) + 10)
+        if self.i < len(tag) + 10:
+            self.make_room(len(tag) + 10)
         self._write_varint_unsigned(encode_zigzag32(value))
         self.buf[self.i-len(tag):self.i] = tag
         self.i -= len(tag)
     
     def serialize_sint64(self, tag: bytes, value: int) -> None:
-        self.make_room(len(tag) + 10)
+        if self.i < len(tag) + 10:
+            self.make_room(len(tag) + 10)
         self._write_varint_unsigned(encode_zigzag64(value))
         self.buf[self.i-len(tag):self.i] = tag
         self.i -= len(tag)
     
     def serialize_int32(self, tag: bytes, value: int) -> None:
-        self.make_room(len(tag) + 10)
+        if self.i < len(tag) + 10:
+            self.make_room(len(tag) + 10)
         self._write_varint_signed(value)
         self.buf[self.i-len(tag):self.i] = tag
         self.i -= len(tag)
     
     def serialize_int64(self, tag: bytes, value: int) -> None:
-        self.make_room(len(tag) + 10)
+        if self.i < len(tag) + 10:
+            self.make_room(len(tag) + 10)
         self._write_varint_signed(value)
         self.buf[self.i-len(tag):self.i] = tag
         self.i -= len(tag)
     
     def serialize_fixed32(self, tag: bytes, value: int) -> None:
-        self.make_room(4 + len(tag))
+        if self.i < len(tag) + 4:
+            self.make_room(4 + len(tag))
         self.buf[self.i-4:self.i] = struct.pack("<I", value)
         self.i -= 4
         self.buf[self.i-len(tag):self.i] = tag
         self.i -= len(tag)
     
     def serialize_fixed64(self, tag: bytes, value: int) -> None:
-        self.make_room(8 + len(tag))
+        if self.i < len(tag) + 8:
+            self.make_room(8 + len(tag))
         self.buf[self.i-8:self.i] = struct.pack("<Q", value)
         self.i -= 8
         self.buf[self.i-len(tag):self.i] = tag
         self.i -= len(tag)
     
     def serialize_sfixed32(self, tag: bytes, value: int) -> None:
-        self.make_room(4 + len(tag))
+        if self.i < len(tag) + 4:
+            self.make_room(4 + len(tag))
         self.buf[self.i-4:self.i] = struct.pack("<i", value)
         self.i -= 4
         self.buf[self.i-len(tag):self.i] = tag
         self.i -= len(tag)
     
     def serialize_sfixed64(self, tag: bytes, value: int) -> None:
-        self.make_room(8 + len(tag))
+        if self.i < len(tag) + 8:
+            self.make_room(8 + len(tag))
         self.buf[self.i-8:self.i] = struct.pack("<q", value)
         self.i -= 8
         self.buf[self.i-len(tag):self.i] = tag
         self.i -= len(tag)
     
     def serialize_float(self, tag: bytes, value: float) -> None:
-        self.make_room(4 + len(tag))
+        if self.i < len(tag) + 4:
+            self.make_room(4 + len(tag))
         self.buf[self.i-4:self.i] = struct.pack("<f", value)
         self.i -= 4
         self.buf[self.i-len(tag):self.i] = tag
         self.i -= len(tag)
     
     def serialize_double(self, tag: bytes, value: float) -> None:
-        self.make_room(8 + len(tag))
+        if self.i < len(tag) + 8:
+            self.make_room(8 + len(tag))
         self.buf[self.i-8:self.i] = struct.pack("<d", value)
         self.i -= 8
         self.buf[self.i-len(tag):self.i] = tag
         self.i -= len(tag)
     
     def serialize_bytes(self, tag: bytes, value: bytes) -> None:
-        self.make_room(len(value) + len(tag) + 10)
+        if self.i < len(tag) + len(value) + 10:
+            self.make_room(len(value) + len(tag) + 10)
 
         self.buf[self.i-len(value):self.i] = value
         self.i -= len(value)
@@ -147,7 +162,8 @@ class ProtoSerializer:
         before = len(self.out) - self.i
         encode_func(self, *args, **kwargs)
         after = len(self.out) - self.i
-        self.make_room(len(tag) + 10)
+        if self.i < len(tag) + 10:
+            self.make_room(len(tag) + 10)
         self._write_varint_unsigned(after - before)
         self.buf[self.i-len(tag):self.i] = tag
         self.i -= len(tag)
@@ -178,7 +194,7 @@ class ProtoSerializer:
         self.serialize_repeated_packed(tag, values, self.write_fixed64_no_tag)
     
     def serialize_repeated_uint64(self, tag: bytes, values: List[int]) -> None:
-        self.serialize_repeated_packed(tag, values, self._write_varint_unsigned)
+        self.serialize_repeated_packed(tag, values, self._write_varint_unsigned_size)
 
     def _write_varint_signed(self, value: int) -> None:
         if value < 0:
@@ -186,6 +202,16 @@ class ProtoSerializer:
         self._write_varint_unsigned(value)
 
     def _write_varint_unsigned(self, value: int) -> None:
+        l = size_varint(value)
+        j = self.i - l
+        while value >= 128:
+            self.buf[j] = (value & 0x7F) | 0x80
+            j += 1
+            value >>= 7
+        self.buf[j] = value
+        self.i -= l
+    
+    def _write_varint_unsigned_size(self, value: int) -> None:
         l = size_varint(value)
         self.make_room(l)
         j = self.i - l

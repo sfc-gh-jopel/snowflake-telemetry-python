@@ -10,6 +10,7 @@ from m2.snowflake.telemetry.opentelemetry.exporter.otlp.proto.common._log_encode
 from m3.snowflake.telemetry.opentelemetry.exporter.otlp.proto.common._log_encoder import encode_logs as m3_encode_logs
 from m4.snowflake.telemetry.opentelemetry.exporter.otlp.proto.common._log_encoder import encode_logs as m4_encode_logs
 from m5.snowflake.telemetry.opentelemetry.exporter.otlp.proto.common._log_encoder import encode_logs as m5_encode_logs
+from m6.snowflake.telemetry.opentelemetry.exporter.otlp.proto.common._log_encoder import encode_logs as m6_encode_logs
 
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.util.instrumentation import InstrumentationScope
@@ -179,6 +180,13 @@ def test_bm_m5_serialize_logs_data(state):
     while state:
         m5_encode_logs(logs_data)
 
+@benchmark.register
+def test_bm_m6_serialize_logs_data(state):
+    # FIXED VARINT
+    logs_data = get_logs_data()
+    while state:
+        bytes(m6_encode_logs(logs_data))
+
 if __name__ == "__main__":
     logs_data = get_logs_data()
 
@@ -196,6 +204,13 @@ if __name__ == "__main__":
 
     m5 = lambda : m5_encode_logs(logs_data)
 
+    # M6: fixed length encode the varints so messages can be written sequentially without precomputing the size
+    # https://steinborn.me/posts/performance/how-fast-can-you-write-a-varint/#bonus-exact-byte-length-encoding
+    # con: 
+    # - breaks equality requirement for the original implementation for testing
+    # - inflates message sizes
+    m6 = lambda : bytes(m6_encode_logs(logs_data))
+
     methods = {
         "m0": m0,
         "m1": m1,
@@ -203,11 +218,12 @@ if __name__ == "__main__":
         "m3": m3,
         "m4": m4,
         "m5": m5,
+        "m6": m6,
     }
 
     # Sanity check
     for name, lmbda in methods.items():
-        if name == "m3":
+        if name in ["m3", "m6"]:
             continue
         print(f"Checking {name}")
         assert lmbda() == m0()
