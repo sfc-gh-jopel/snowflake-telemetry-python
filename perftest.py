@@ -33,6 +33,15 @@ def bm_bytearray_plus():
         b += b"hello world"
     return b
 
+def bm_bytearray_join_list():
+    l = []
+    for _ in range(10000):
+        l.append(b"hello world")
+    b = bytearray()
+    for i in l:
+        b += i
+    return b
+
 def bm_bytearray_plus_reverse():
     b = bytearray()
     for _ in range(10000):
@@ -56,6 +65,17 @@ def bm_ctypes_string_buffer():
         ctypes.memmove(ctypes.byref(b, j), cpy_string, l)
         j += l
     return b.raw
+
+import struct
+def bm_presize_struct_pack_into():
+    cpy_string = b"hello world"
+    l = len(cpy_string)
+    b = bytearray(l * 10000)
+    i = 0
+    for _ in range(10000):
+        struct.pack_into(f"{l}s", b, i, cpy_string)
+        i += l
+    return b
 
 # 
 # OBJECT INSTANTIATION BENCHMARKS
@@ -111,8 +131,10 @@ if __name__ == "__main__":
             "bm_bytearray_extend",
             "bm_bytearray_plus",
             "bm_bytearray_plus_reverse",
+            "bm_bytearray_join_list",
             "bm_BytesIO",
             "bm_ctypes_string_buffer",
+            "bm_presize_struct_pack_into",
         ],
         "Object": [
             "bm_TypedDict",

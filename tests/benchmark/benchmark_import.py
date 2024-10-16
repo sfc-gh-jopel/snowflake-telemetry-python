@@ -14,20 +14,20 @@ def import_package(venv_path: str, package: str) -> str:
 """
 v0.5.0
 import time: self [us] | cumulative | imported package
-import time:       297 |     408355 |m1.snowflake.telemetry._internal.exporter.otlp.proto.logs
+import time:       297 |     408355 | m1.snowflake.telemetry._internal.exporter.otlp.proto.logs
 """
 
 """
 v0.6.0.dev
 import time: self [us] | cumulative | imported package
-import time:       320 |     219479 |m1.snowflake.telemetry._internal.exporter.otlp.proto.logs
+import time:       320 |     219479 | m1.snowflake.telemetry._internal.exporter.otlp.proto.logs
 """
 def main():
     venv_path = ".benchmark-import-venv"
     create_venv(venv_path)
     install_package(venv_path, "./")
     print("Import time:")
-    import_package(venv_path, "importm1.snowflake.telemetry._internal.exporter.otlp.proto.logs")
+    import_package(venv_path, "import m4.snowflake.telemetry._internal.exporter.otlp.proto.logs")
     shutil.rmtree(venv_path)
 
 if __name__ == "__main__":
