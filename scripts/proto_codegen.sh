@@ -49,7 +49,7 @@ fi
     git symbolic-ref -q HEAD && git pull --ff-only || true
 )
 
-cd $repo_root/src/snowflake/telemetry
+cd $repo_root/src/snowflake/telemetry/_internal
 
 # clean up old generated code
 find opentelemetry/ -regex ".*_pb2.*\.pyi?" -exec rm {} +

@@ -16,10 +16,10 @@ Please see the class documentation for those classes to learn more.
 import abc
 import typing
 
-from snowflake.telemetry.opentelemetry.exporter.otlp.proto.common.trace_encoder import (
+from snowflake.telemetry._internal.opentelemetry.exporter.otlp.proto.common.trace_encoder import (
     encode_spans,
 )
-from snowflake.telemetry.opentelemetry.proto.trace.v1.trace import TracesData
+from snowflake.telemetry._internal.opentelemetry.proto.trace.v1.trace import TracesData
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.trace.export import (
     SpanExportResult,

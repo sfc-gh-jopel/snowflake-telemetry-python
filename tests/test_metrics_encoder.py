@@ -15,7 +15,7 @@
 # pylint: disable=protected-access
 import unittest
 
-from snowflake.telemetry.opentelemetry.exporter.otlp.proto.common.metrics_encoder import (
+from snowflake.telemetry._internal.opentelemetry.exporter.otlp.proto.common.metrics_encoder import (
     encode_metrics,
 )
 from opentelemetry.proto.collector.metrics.v1.metrics_service_pb2 import (
