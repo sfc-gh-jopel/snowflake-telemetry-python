@@ -22,21 +22,19 @@ from snowflake.telemetry._internal.opentelemetry.exporter.otlp.proto.common._int
     _encode_value,
     _encode_attributes,
 )
-from snowflake.telemetry._internal.opentelemetry.proto.collector.logs.v1.logs_service import (
-    ExportLogsServiceRequest,
-)
 from snowflake.telemetry._internal.opentelemetry.proto.logs.v1.logs import (
     ScopeLogs,
     ResourceLogs,
+    LogsData,
 )
 from snowflake.telemetry._internal.opentelemetry.proto.logs.v1.logs import LogRecord as PB2LogRecord
 
 from opentelemetry.sdk._logs import LogData
 
 
-def encode_logs(batch: Sequence[LogData]) -> ExportLogsServiceRequest:
-    return ExportLogsServiceRequest(resource_logs=_encode_resource_logs(batch))
-
+def encode_logs(batch: Sequence[LogData]) -> bytes:
+    return bytes(LogsData(resource_logs=_encode_resource_logs(batch))
+)
 
 def _encode_log(log_data: LogData) -> PB2LogRecord:
     span_id = (

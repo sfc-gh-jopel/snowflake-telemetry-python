@@ -82,7 +82,7 @@ class ProtoMetricExporter(MetricExporter):
     def _serialize_metrics_data(data: MetricsData) -> bytes:
         # pylint gets confused by protobuf-generated code, that's why we must
         # disable the no-member check below.
-        return bytes(PB2MetricsData(resource_metrics=encode_metrics(data).resource_metrics))
+        return encode_metrics(data)
 
     def force_flush(self, timeout_millis: float = 10_000) -> bool:
         return True

@@ -2,16 +2,14 @@
 
 import os
 import sys
-from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import List, Union
+from typing import List, Optional
 from enum import IntEnum
 
 from google.protobuf.compiler import plugin_pb2 as plugin
 from google.protobuf.descriptor_pb2 import (
     FileDescriptorProto,
     FieldDescriptorProto,
-    OneofDescriptorProto,
     EnumDescriptorProto,
     EnumValueDescriptorProto,
     MethodDescriptorProto,
@@ -33,26 +31,25 @@ class ProtoTypeDescriptor:
     name: str
     wire_type: WireType
     python_type: str
-    default: str
 
 proto_type_to_descriptor = {
-    FieldDescriptorProto.TYPE_BOOL: ProtoTypeDescriptor("bool", WireType.VARINT, "bool", "False"),
-    FieldDescriptorProto.TYPE_ENUM: ProtoTypeDescriptor("enum", WireType.VARINT, "int", "0"),
-    FieldDescriptorProto.TYPE_INT32: ProtoTypeDescriptor("int32", WireType.VARINT, "int", "0"),
-    FieldDescriptorProto.TYPE_INT64: ProtoTypeDescriptor("int64", WireType.VARINT, "int", "0"),
-    FieldDescriptorProto.TYPE_UINT32: ProtoTypeDescriptor("uint32", WireType.VARINT, "int", "0"),
-    FieldDescriptorProto.TYPE_UINT64: ProtoTypeDescriptor("uint64", WireType.VARINT, "int", "0"),
-    FieldDescriptorProto.TYPE_SINT32: ProtoTypeDescriptor("sint32", WireType.VARINT, "int", "0"),
-    FieldDescriptorProto.TYPE_SINT64: ProtoTypeDescriptor("sint64", WireType.VARINT, "int", "0"),
-    FieldDescriptorProto.TYPE_FIXED32: ProtoTypeDescriptor("fixed32", WireType.I32, "int", "0"),
-    FieldDescriptorProto.TYPE_FIXED64: ProtoTypeDescriptor("fixed64", WireType.I64, "int", "0"),
-    FieldDescriptorProto.TYPE_SFIXED32: ProtoTypeDescriptor("sfixed32", WireType.I32, "int", "0"),
-    FieldDescriptorProto.TYPE_SFIXED64: ProtoTypeDescriptor("sfixed64", WireType.I64, "int", "0"),
-    FieldDescriptorProto.TYPE_FLOAT: ProtoTypeDescriptor("float", WireType.I32, "float", "0.0"),
-    FieldDescriptorProto.TYPE_DOUBLE: ProtoTypeDescriptor("double", WireType.I64, "float", "0.0"),
-    FieldDescriptorProto.TYPE_STRING: ProtoTypeDescriptor("string", WireType.LEN, "str", '""'),
-    FieldDescriptorProto.TYPE_BYTES: ProtoTypeDescriptor("bytes", WireType.LEN, "bytes", 'b""'),
-    FieldDescriptorProto.TYPE_MESSAGE: ProtoTypeDescriptor("message", WireType.LEN, "MessageMarshaler", 'None'),
+    FieldDescriptorProto.TYPE_BOOL: ProtoTypeDescriptor("bool", WireType.VARINT, "bool"),
+    FieldDescriptorProto.TYPE_ENUM: ProtoTypeDescriptor("enum", WireType.VARINT, "int"),
+    FieldDescriptorProto.TYPE_INT32: ProtoTypeDescriptor("int32", WireType.VARINT, "int"),
+    FieldDescriptorProto.TYPE_INT64: ProtoTypeDescriptor("int64", WireType.VARINT, "int"),
+    FieldDescriptorProto.TYPE_UINT32: ProtoTypeDescriptor("uint32", WireType.VARINT, "int"),
+    FieldDescriptorProto.TYPE_UINT64: ProtoTypeDescriptor("uint64", WireType.VARINT, "int"),
+    FieldDescriptorProto.TYPE_SINT32: ProtoTypeDescriptor("sint32", WireType.VARINT, "int"),
+    FieldDescriptorProto.TYPE_SINT64: ProtoTypeDescriptor("sint64", WireType.VARINT, "int"),
+    FieldDescriptorProto.TYPE_FIXED32: ProtoTypeDescriptor("fixed32", WireType.I32, "int"),
+    FieldDescriptorProto.TYPE_FIXED64: ProtoTypeDescriptor("fixed64", WireType.I64, "int"),
+    FieldDescriptorProto.TYPE_SFIXED32: ProtoTypeDescriptor("sfixed32", WireType.I32, "int"),
+    FieldDescriptorProto.TYPE_SFIXED64: ProtoTypeDescriptor("sfixed64", WireType.I64, "int"),
+    FieldDescriptorProto.TYPE_FLOAT: ProtoTypeDescriptor("float", WireType.I32, "float"),
+    FieldDescriptorProto.TYPE_DOUBLE: ProtoTypeDescriptor("double", WireType.I64, "float"),
+    FieldDescriptorProto.TYPE_STRING: ProtoTypeDescriptor("string", WireType.LEN, "str"),
+    FieldDescriptorProto.TYPE_BYTES: ProtoTypeDescriptor("bytes", WireType.LEN, "bytes"),
+    FieldDescriptorProto.TYPE_MESSAGE: ProtoTypeDescriptor("message", WireType.LEN, "bytes"),
 }
 
 @dataclass
@@ -73,9 +70,9 @@ class EnumTemplate:
     values: List["EnumValueTemplate"] = field(default_factory=list)
 
     @staticmethod
-    def from_descriptor(descriptor: EnumDescriptorProto) -> "EnumTemplate":
+    def from_descriptor(descriptor: EnumDescriptorProto, parent: str = "") -> "EnumTemplate":
         return EnumTemplate(
-            name=descriptor.name,
+            name=parent + "_" +  descriptor.name if parent else descriptor.name,
             values=[EnumValueTemplate.from_descriptor(value) for value in descriptor.value],
         )
 
@@ -95,21 +92,13 @@ class FieldTemplate:
     python_type: str
     proto_type: str
     repeated: bool
-    default: str
+    group: str
+    encode_presence: bool
 
     @staticmethod
-    def from_descriptor(descriptor: FieldDescriptorProto) -> "FieldTemplate":
+    def from_descriptor(descriptor: FieldDescriptorProto, group: Optional[str] = None) -> "FieldTemplate":
         repeated = descriptor.label == FieldDescriptorProto.LABEL_REPEATED
         type_descriptor = proto_type_to_descriptor[descriptor.type]
-
-        if descriptor.HasField("oneof_index"):
-            default = None
-        elif repeated:
-            # In python, default field values are shared across all instances of the class
-            # So we should not use mutable objects like list() as default values
-            default = None
-        else:
-            default = type_descriptor.default
         
         python_type = type_descriptor.python_type
         proto_type = type_descriptor.name
@@ -127,6 +116,10 @@ class FieldTemplate:
         # Saves us from having to calculate the tag at runtime
         tag = tag_to_repr_varint(tag)
 
+        # For group / oneof fields, we need to encode the presence of the field
+        # For message fields, we need to encode the presence of the field if it is not None
+        encode_presence = group is not None or proto_type == "message"
+
         return FieldTemplate(
             name=descriptor.name,
             tag=tag,
@@ -134,58 +127,30 @@ class FieldTemplate:
             python_type=python_type,
             proto_type=proto_type,
             repeated=repeated,
-            default=default,
-        )
-
-@dataclass
-class OneOfTemplate:
-    name: str
-    fields: List[FieldTemplate] = field(default_factory=list)
-    
-    @staticmethod
-    def from_descriptor(descriptor: OneofDescriptorProto, fields: List[FieldDescriptorProto]) -> "OneOfTemplate":
-
-        fields = [FieldTemplate.from_descriptor(field) for field in fields]
-        # Sort the fields by number in descending order to follow "last one wins" semantics
-        fields.sort(key=lambda field: field.number, reverse=True)
-
-        return OneOfTemplate(
-            name=descriptor.name,
-            fields=fields,
+            group=group,
+            encode_presence=encode_presence,
         )
 
 @dataclass
 class MessageTemplate:
     name: str
-    fields: List[Union["FieldTemplate", "OneOfTemplate"]] = field(default_factory=list)
+    fields: List[FieldTemplate] = field(default_factory=list)
     enums: List["EnumTemplate"] = field(default_factory=list)
     messages: List["MessageTemplate"] = field(default_factory=list)
 
     @staticmethod
-    def from_descriptor(descriptor: DescriptorProto) -> "MessageTemplate":
-        fields = []
-        oneofs_map = defaultdict(list)
-        for field in descriptor.field:
-            if field.HasField("oneof_index"):
-                oneofs_map[field.oneof_index].append(field)
-            else:
-                fields.append(field)
+    def from_descriptor(descriptor: DescriptorProto, parent: str = "") -> "MessageTemplate":
+        def get_group(field: FieldDescriptorProto) -> str:
+            return descriptor.oneof_decl[field.oneof_index].name if field.HasField("oneof_index") else None
+        fields = [FieldTemplate.from_descriptor(field, get_group(field)) for field in descriptor.field]
+        fields.sort(key=lambda field: field.number)
         
-        # Sort the fields by number in descending order, since we serialize in reverse order
-        fields = [FieldTemplate.from_descriptor(field) for field in fields]
-        oneofs = [OneOfTemplate.from_descriptor(descriptor.oneof_decl[oneof_index], fields) for oneof_index, fields in oneofs_map.items()]
-        fields += oneofs
-        def sort_key(field: Union[FieldTemplate, OneOfTemplate]):
-            if isinstance(field, FieldTemplate):
-                return field.number
-            return field.fields[0].number
-        fields.sort(key=sort_key, reverse=True)
-        
+        name = parent + "_" + descriptor.name if parent else descriptor.name
         return MessageTemplate(
-            name=descriptor.name,
+            name=name,
             fields=fields,
-            enums=[EnumTemplate.from_descriptor(enum) for enum in descriptor.enum_type],
-            messages=[MessageTemplate.from_descriptor(message) for message in descriptor.nested_type],
+            enums=[EnumTemplate.from_descriptor(enum, name) for enum in descriptor.enum_type],
+            messages=[MessageTemplate.from_descriptor(message, name) for message in descriptor.nested_type],
         )
 
 @dataclass
@@ -219,6 +184,7 @@ class FileTemplate:
     messages: List["MessageTemplate"] = field(default_factory=list)
     enums: List["EnumTemplate"] = field(default_factory=list)
     services: List["ServiceTemplate"] = field(default_factory=list)
+    name: str = ""
 
     @staticmethod
     def from_descriptor(descriptor: FileDescriptorProto) -> "FileTemplate":
@@ -226,6 +192,7 @@ class FileTemplate:
             messages=[MessageTemplate.from_descriptor(message) for message in descriptor.message_type],
             enums=[EnumTemplate.from_descriptor(enum) for enum in descriptor.enum_type],
             services=[ServiceTemplate.from_descriptor(service) for service in descriptor.service],
+            name=descriptor.name,
         )
 
 def main():

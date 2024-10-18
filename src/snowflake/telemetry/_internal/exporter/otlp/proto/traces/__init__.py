@@ -72,7 +72,7 @@ class ProtoSpanExporter(SpanExporter):
     ) -> bytes:
         # pylint gets confused by protobuf-generated code, that's why we must
         # disable the no-member check below.
-        return bytes(TracesData(resource_spans=encode_spans(sdk_spans).resource_spans))
+        return encode_spans(sdk_spans)
 
     def shutdown(self) -> None:
         pass

@@ -55,7 +55,7 @@ from snowflake.telemetry.test.logs_test_utils import (
 class TestOTLPLogEncoder(unittest.TestCase):
     def test_encode(self):
         sdk_logs, expected_encoding = self.get_test_logs()
-        self.assertEqual(bytes(encode_logs(sdk_logs)), expected_encoding.SerializeToString())
+        self.assertEqual(encode_logs(sdk_logs), expected_encoding.SerializeToString())
 
     def test_proto_log_exporter(self):
         sdk_logs, expected_encoding = self.get_test_logs()

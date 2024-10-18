@@ -160,7 +160,7 @@ class TestOTLPMetricsEncoder(unittest.TestCase):
             ]
         )
         actual = encode_metrics(metrics_data)
-        self.assertEqual(expected.SerializeToString(), bytes(actual))
+        self.assertEqual(expected.SerializeToString(), actual)
         self.metric_writer.clear()
         self.exporter.export(metrics_data)
         protos = self.metric_writer.get_finished_protos()
@@ -246,7 +246,7 @@ class TestOTLPMetricsEncoder(unittest.TestCase):
             ]
         )
         actual = encode_metrics(metrics_data)
-        self.assertEqual(expected.SerializeToString(), bytes(actual))
+        self.assertEqual(expected.SerializeToString(), actual)
         self.metric_writer.clear()
         self.exporter.export(metrics_data)
         protos = self.metric_writer.get_finished_protos()
@@ -329,7 +329,7 @@ class TestOTLPMetricsEncoder(unittest.TestCase):
             ]
         )
         actual = encode_metrics(metrics_data)
-        self.assertEqual(expected.SerializeToString(), bytes(actual))
+        self.assertEqual(expected.SerializeToString(), actual)
         self.metric_writer.clear()
         self.exporter.export(metrics_data)
         protos = self.metric_writer.get_finished_protos()
@@ -412,7 +412,7 @@ class TestOTLPMetricsEncoder(unittest.TestCase):
             ]
         )
         actual = encode_metrics(metrics_data)
-        self.assertEqual(expected.SerializeToString(), bytes(actual))
+        self.assertEqual(expected.SerializeToString(), actual)
         self.metric_writer.clear()
         self.exporter.export(metrics_data)
         protos = self.metric_writer.get_finished_protos()
@@ -503,7 +503,7 @@ class TestOTLPMetricsEncoder(unittest.TestCase):
             ]
         )
         actual = encode_metrics(metrics_data)
-        self.assertEqual(expected.SerializeToString(), bytes(actual))
+        self.assertEqual(expected.SerializeToString(), actual)
         self.metric_writer.clear()
         self.exporter.export(metrics_data)
         protos = self.metric_writer.get_finished_protos()
@@ -731,7 +731,7 @@ class TestOTLPMetricsEncoder(unittest.TestCase):
             ]
         )
         actual = encode_metrics(metrics_data)
-        self.assertEqual(expected.SerializeToString(), bytes(actual))
+        self.assertEqual(expected.SerializeToString(), actual)
         self.metric_writer.clear()
         self.exporter.export(metrics_data)
         protos = self.metric_writer.get_finished_protos()
@@ -857,7 +857,7 @@ class TestOTLPMetricsEncoder(unittest.TestCase):
         )
         # pylint: disable=protected-access
         actual = encode_metrics(metrics_data)
-        self.assertEqual(expected.SerializeToString(), bytes(actual))
+        self.assertEqual(expected.SerializeToString(), actual)
         self.metric_writer.clear()
         self.exporter.export(metrics_data)
         protos = self.metric_writer.get_finished_protos()

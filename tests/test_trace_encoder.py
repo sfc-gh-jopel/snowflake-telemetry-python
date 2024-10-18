@@ -67,7 +67,7 @@ from snowflake.telemetry.test.traces_test_utils import (
 class TestOTLPTraceEncoder(unittest.TestCase):
     def test_encode_spans(self):
         otel_spans, expected_encoding = self.get_exhaustive_test_spans()
-        self.assertEqual(bytes(encode_spans(otel_spans)), expected_encoding.SerializeToString())
+        self.assertEqual(encode_spans(otel_spans), expected_encoding.SerializeToString())
 
     def test_proto_span_exporter(self):
         otel_spans, expected_encoding = self.get_exhaustive_test_spans()
