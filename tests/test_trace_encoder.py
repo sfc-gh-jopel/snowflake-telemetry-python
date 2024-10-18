@@ -63,8 +63,13 @@ from snowflake.telemetry._internal.exporter.otlp.proto.traces import (
 from snowflake.telemetry.test.traces_test_utils import (
     InMemorySpanWriter,
 )
+from snowflake.telemetry.test.opentelemetry_proxy_testutil import reload_opentelemetry_proxy
 
 class TestOTLPTraceEncoder(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        reload_opentelemetry_proxy(use_otel=False)
+
     def test_encode_spans(self):
         otel_spans, expected_encoding = self.get_exhaustive_test_spans()
         self.assertEqual(bytes(encode_spans(otel_spans)), expected_encoding.SerializeToString())

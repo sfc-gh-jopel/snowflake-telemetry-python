@@ -50,9 +50,14 @@ from snowflake.telemetry._internal.exporter.otlp.proto.logs import (
 from snowflake.telemetry.test.logs_test_utils import (
     InMemoryLogWriter,
 )
+from snowflake.telemetry.test.opentelemetry_proxy_testutil import reload_opentelemetry_proxy
 
 
 class TestOTLPLogEncoder(unittest.TestCase):
+    @classmethod
+    def setUpClass(self):
+        reload_opentelemetry_proxy(use_otel=False)
+
     def test_encode(self):
         sdk_logs, expected_encoding = self.get_test_logs()
         self.assertEqual(bytes(encode_logs(sdk_logs)), expected_encoding.SerializeToString())

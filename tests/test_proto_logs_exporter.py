@@ -15,11 +15,13 @@ from snowflake.telemetry._internal.exporter.otlp.proto.logs import (
     SnowflakeLoggingHandler,
 )
 from snowflake.telemetry.test.logs_test_utils import InMemoryLogWriter
+from snowflake.telemetry.test.opentelemetry_proxy_testutil import reload_opentelemetry_proxy
 
 
 class TestSnowflakeLoggingHandler(unittest.TestCase):
     @classmethod
     def setUpClass(self):
+        reload_opentelemetry_proxy(use_otel=False)
         self.log_writer = InMemoryLogWriter() # Replaced with SnowflakeLogWriter in XP
         self.root_logger = logging.getLogger()
         self.root_logger.addHandler(SnowflakeLoggingHandler(self.log_writer))

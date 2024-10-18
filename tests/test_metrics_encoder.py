@@ -52,6 +52,7 @@ from snowflake.telemetry.test.metrics_test_utils import (
     InMemoryMetricWriter,
 )
 from snowflake.telemetry.test.metrictestutil import _generate_gauge, _generate_sum
+from snowflake.telemetry.test.opentelemetry_proxy_testutil import reload_opentelemetry_proxy
 
 
 class TestOTLPMetricsEncoder(unittest.TestCase):
@@ -79,6 +80,7 @@ class TestOTLPMetricsEncoder(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
+        reload_opentelemetry_proxy(use_otel=False)
         self.metric_writer = InMemoryMetricWriter()
         self.exporter = ProtoMetricExporter(self.metric_writer)
 
