@@ -152,41 +152,6 @@ class ProtoSerializer:
     def serialize_string(self, tag: bytes, value: str) -> None:
         self.serialize_bytes(tag, value.encode("utf-8"))
 
-    def serialize_message(
-            self, 
-            tag: bytes, 
-            encode_func: Callable, 
-            *args, 
-            **kwargs,
-        ) -> None:
-        before = len(self.out) - self.i
-        encode_func(self, *args, **kwargs)
-        after = len(self.out) - self.i
-        if self.i < len(tag) + 10:
-            self.make_room(len(tag) + 10)
-        self._write_varint_unsigned(after - before)
-        self.buf[self.i-len(tag):self.i] = tag
-        self.i -= len(tag)
-    
-    def serialize_repeated_packed(
-            self, 
-            tag: bytes, 
-            values: List[Any],
-            write_value: Callable[[Any, bytearray], None],
-        ) -> None:
-        if not values:
-            return
-        # Packed repeated fields are encoded like a bytearray
-        # with a total size prefix and a single tag
-        # (similar to a bytes field)
-        before = len(self.out) - self.i
-        for value in reversed(values):
-            write_value(value)
-        after = len(self.out) - self.i
-        self._write_varint_unsigned(after - before)
-        self.buf[self.i-len(tag):self.i] = tag
-        self.i -= len(tag)
-    
     def serialize_repeated_double(self, tag: bytes, values: List[float]) -> None:
         self.serialize_repeated_packed(tag, values, self.write_double_no_tag)
     
@@ -231,6 +196,21 @@ class ProtoSerializer:
         self.make_room(8)
         self.buf[self.i-8:self.i] = struct.pack("<Q", value)
         self.i -= 8
+    
+    def write_tag_size(self, tag: bytes, size: int) -> None:
+        self.make_room(len(tag) + 10)
+        self._write_varint_unsigned(size)
+        self.buf[self.i-len(tag):self.i] = tag
+        self.i -= len(tag)
+    
+    def write_tag(self, tag: bytes) -> None:
+        self.make_room(len(tag))
+        self.buf[self.i-len(tag):self.i] = tag
+        self.i -= len(tag)
+    
+    def write_size(self, size: int) -> None:
+        self.make_room(10)
+        self._write_varint_unsigned(size)
 
 def size_varint(value: int) -> int:
     size = 1

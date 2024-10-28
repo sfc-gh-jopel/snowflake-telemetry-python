@@ -33,12 +33,14 @@ def encode_logs(batch: Sequence[LogData]) -> None:
 
     resource_logs = _process_resource_logs(batch)
     for resource_log in resource_logs:
-        proto_serializer.serialize_message(b"\n", _encode_resource_logs, resource_log)
+        _encode_resource_logs(b"\n", proto_serializer, resource_log)
+        # proto_serializer.serialize_message(b"\n", _encode_resource_logs, resource_log)
 
     return bytes(proto_serializer)
 
 
-def _encode_log(proto_serializer: ProtoSerializer, log_data: LogData) -> None:
+def _encode_log(tag, proto_serializer: ProtoSerializer, log_data: LogData) -> None:
+    before = len(proto_serializer.out) - proto_serializer.i
     span_id = (
         None
         if log_data.log_record.span_id == 0
@@ -74,7 +76,8 @@ def _encode_log(proto_serializer: ProtoSerializer, log_data: LogData) -> None:
     _encode_attributes(b"2", proto_serializer, attributes)
 
     if body:
-        proto_serializer.serialize_message(b"*", _encode_value, body)
+        _encode_value(b"*", proto_serializer, body)
+        # proto_serializer.serialize_message(b"*", _encode_value, body)
 
     if severity_text:
         proto_serializer.serialize_string(b"\x1a", severity_text)
@@ -82,7 +85,9 @@ def _encode_log(proto_serializer: ProtoSerializer, log_data: LogData) -> None:
         proto_serializer.serialize_enum(b"\x10", severity_number)
     if time_unix_nano:
         proto_serializer.serialize_fixed64(b"\t", time_unix_nano)
-
+    
+    after = len(proto_serializer.out) - proto_serializer.i
+    proto_serializer.write_tag_size(tag, after - before)
 
 
 def _process_resource_logs(batch: Sequence[LogData]) -> List[tuple]:
@@ -107,18 +112,24 @@ def _process_resource_logs(batch: Sequence[LogData]) -> List[tuple]:
         )
     return pb2_resource_logs
 
-def _encode_resource_logs(proto_serializer: ProtoSerializer,resource_log) -> None:
+def _encode_resource_logs(tag, proto_serializer: ProtoSerializer,resource_log) -> None:
     resource, scope_logs = resource_log
 
     schema_url = resource.schema_url
+    before = len(proto_serializer.out) - proto_serializer.i
     if resource:
-        proto_serializer.serialize_message(b"\n", _encode_resource, resource)
+        _encode_resource(b"\n", proto_serializer, resource)
+        # proto_serializer.serialize_message(b"\n", _encode_resource, resource)
     if schema_url:
         proto_serializer.serialize_string(b"\x1a", schema_url)
     
     for scope_log in scope_logs:
         instrumentation, logs = scope_log
         if instrumentation:
-            proto_serializer.serialize_message(b"\n", _encode_instrumentation_scope, instrumentation)
+            _encode_instrumentation_scope(b"\n", proto_serializer, instrumentation)
+            # proto_serializer.serialize_message(b"\n", _encode_instrumentation_scope, instrumentation)
         for log in logs:
-            proto_serializer.serialize_message(b"\x12", _encode_log, log)
+            _encode_log(b"\x12", proto_serializer, log)
+            # proto_serializer.serialize_message(b"\x12", _encode_log, log)
+    after = len(proto_serializer.out) - proto_serializer.i
+    proto_serializer.write_tag_size(tag, after - before)
