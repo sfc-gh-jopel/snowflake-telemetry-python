@@ -26,7 +26,7 @@ from opentelemetry.sdk.metrics import (
     ObservableUpDownCounter,
     UpDownCounter,
 )
-from opentelemetry.exporter.otlp.proto.common._internal import (
+from snowflake.telemetry._internal.opentelemetry.exporter.otlp.proto.common._internal import (
     _encode_attributes,
 )
 from opentelemetry.sdk.environment_variables import (
@@ -35,11 +35,11 @@ from opentelemetry.sdk.environment_variables import (
 from opentelemetry.sdk.metrics.export import (
     AggregationTemporality,
 )
-from opentelemetry.proto.collector.metrics.v1.metrics_service_pb2 import (
+from snowflake.telemetry._internal.opentelemetry.proto.collector.metrics.v1 import (
     ExportMetricsServiceRequest,
 )
-from opentelemetry.proto.common.v1.common_pb2 import InstrumentationScope
-from opentelemetry.proto.metrics.v1 import metrics_pb2 as pb2
+from snowflake.telemetry._internal.opentelemetry.proto.common.v1 import InstrumentationScope
+import snowflake.telemetry._internal.opentelemetry.proto.metrics.v1 as pb2
 from opentelemetry.sdk.metrics.export import (
     MetricsData,
     Gauge,
@@ -48,7 +48,7 @@ from opentelemetry.sdk.metrics.export import (
     ExponentialHistogram as ExponentialHistogramType,
 )
 from typing import Dict
-from opentelemetry.proto.resource.v1.resource_pb2 import (
+from snowflake.telemetry._internal.opentelemetry.proto.resource.v1 import (
     Resource as PB2Resource,
 )
 from opentelemetry.sdk.environment_variables import (

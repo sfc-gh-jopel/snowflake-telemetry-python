@@ -28,18 +28,18 @@ from typing import (
 )
 
 from opentelemetry.sdk.util.instrumentation import InstrumentationScope
-from opentelemetry.proto.common.v1.common_pb2 import (
+from snowflake.telemetry._internal.opentelemetry.proto.common.v1 import (
     InstrumentationScope as PB2InstrumentationScope,
 )
-from opentelemetry.proto.resource.v1.resource_pb2 import (
+from snowflake.telemetry._internal.opentelemetry.proto.resource.v1 import (
     Resource as PB2Resource,
 )
-from opentelemetry.proto.common.v1.common_pb2 import AnyValue as PB2AnyValue
-from opentelemetry.proto.common.v1.common_pb2 import KeyValue as PB2KeyValue
-from opentelemetry.proto.common.v1.common_pb2 import (
+from snowflake.telemetry._internal.opentelemetry.proto.common.v1 import AnyValue as PB2AnyValue
+from snowflake.telemetry._internal.opentelemetry.proto.common.v1 import KeyValue as PB2KeyValue
+from snowflake.telemetry._internal.opentelemetry.proto.common.v1 import (
     KeyValueList as PB2KeyValueList,
 )
-from opentelemetry.proto.common.v1.common_pb2 import (
+from snowflake.telemetry._internal.opentelemetry.proto.common.v1 import (
     ArrayValue as PB2ArrayValue,
 )
 from opentelemetry.sdk.trace import Resource

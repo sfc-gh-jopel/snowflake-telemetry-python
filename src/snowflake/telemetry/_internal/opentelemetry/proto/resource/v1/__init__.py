@@ -26,13 +26,15 @@ class Resource(MessageMarshaler):
     ):
         self._attributes = attributes
         self.dropped_attributes_count = dropped_attributes_count
+        super().__init__()
 
+    def calculate_size(self) -> int:
         __size = 0
-        if attributes:
-            __size += util.size_repeated_message(b"\n", attributes)
-        if dropped_attributes_count:
-            __size += util.size_uint32(b"\x10", dropped_attributes_count)
-        super().__init__(__size)
+        if self._attributes:
+            __size += util.size_repeated_message(b"\n", self._attributes)
+        if self.dropped_attributes_count:
+            __size += util.size_uint32(b"\x10", self.dropped_attributes_count)
+        return __size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self._attributes:

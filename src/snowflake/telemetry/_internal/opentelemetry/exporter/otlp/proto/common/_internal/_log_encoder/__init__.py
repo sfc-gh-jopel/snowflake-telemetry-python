@@ -14,7 +14,7 @@
 from collections import defaultdict
 from typing import Sequence, List
 
-from opentelemetry.exporter.otlp.proto.common._internal import (
+from snowflake.telemetry._internal.opentelemetry.exporter.otlp.proto.common._internal import (
     _encode_instrumentation_scope,
     _encode_resource,
     _encode_span_id,
@@ -22,14 +22,14 @@ from opentelemetry.exporter.otlp.proto.common._internal import (
     _encode_value,
     _encode_attributes,
 )
-from opentelemetry.proto.collector.logs.v1.logs_service_pb2 import (
+from snowflake.telemetry._internal.opentelemetry.proto.collector.logs.v1 import (
     ExportLogsServiceRequest,
 )
-from opentelemetry.proto.logs.v1.logs_pb2 import (
+from snowflake.telemetry._internal.opentelemetry.proto.logs.v1 import (
     ScopeLogs,
     ResourceLogs,
 )
-from opentelemetry.proto.logs.v1.logs_pb2 import LogRecord as PB2LogRecord
+from snowflake.telemetry._internal.opentelemetry.proto.logs.v1 import LogRecord as PB2LogRecord
 
 from opentelemetry.sdk._logs import LogData
 

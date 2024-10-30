@@ -40,23 +40,25 @@ class AnyValue(MessageMarshaler):
         self._array_value = array_value
         self._kvlist_value = kvlist_value
         self.bytes_value = bytes_value
+        super().__init__()
 
+    def calculate_size(self) -> int:
         __size = 0
-        if string_value is not None:  # oneof group value
-            __size += util.size_string(b"\n", string_value)
-        if bool_value is not None:  # oneof group value
-            __size += util.size_bool(b"\x10", bool_value)
-        if int_value is not None:  # oneof group value
-            __size += util.size_int64(b"\x18", int_value)
-        if double_value is not None:  # oneof group value
-            __size += util.size_double(b"!", double_value)
-        if array_value is not None:  # oneof group value
-            __size += util.size_message(b"*", array_value)
-        if kvlist_value is not None:  # oneof group value
-            __size += util.size_message(b"2", kvlist_value)
-        if bytes_value is not None:  # oneof group value
-            __size += util.size_bytes(b":", bytes_value)
-        super().__init__(__size)
+        if self.string_value is not None:  # oneof group value
+            __size += util.size_string(b"\n", self.string_value)
+        if self.bool_value is not None:  # oneof group value
+            __size += util.size_bool(b"\x10", self.bool_value)
+        if self.int_value is not None:  # oneof group value
+            __size += util.size_int64(b"\x18", self.int_value)
+        if self.double_value is not None:  # oneof group value
+            __size += util.size_double(b"!", self.double_value)
+        if self._array_value is not None:  # oneof group value
+            __size += util.size_message(b"*", self._array_value)
+        if self._kvlist_value is not None:  # oneof group value
+            __size += util.size_message(b"2", self._kvlist_value)
+        if self.bytes_value is not None:  # oneof group value
+            __size += util.size_bytes(b":", self.bytes_value)
+        return __size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.string_value is not None:  # oneof group value
@@ -83,11 +85,13 @@ class ArrayValue(MessageMarshaler):
         values=None,
     ):
         self._values = values
+        super().__init__()
 
+    def calculate_size(self) -> int:
         __size = 0
-        if values:
-            __size += util.size_repeated_message(b"\n", values)
-        super().__init__(__size)
+        if self._values:
+            __size += util.size_repeated_message(b"\n", self._values)
+        return __size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self._values:
@@ -102,11 +106,13 @@ class KeyValueList(MessageMarshaler):
         values=None,
     ):
         self._values = values
+        super().__init__()
 
+    def calculate_size(self) -> int:
         __size = 0
-        if values:
-            __size += util.size_repeated_message(b"\n", values)
-        super().__init__(__size)
+        if self._values:
+            __size += util.size_repeated_message(b"\n", self._values)
+        return __size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self._values:
@@ -124,13 +130,15 @@ class KeyValue(MessageMarshaler):
     ):
         self.key = key
         self._value = value
+        super().__init__()
 
+    def calculate_size(self) -> int:
         __size = 0
-        if key:
-            __size += util.size_string(b"\n", key)
-        if value is not None:
-            __size += util.size_message(b"\x12", value)
-        super().__init__(__size)
+        if self.key:
+            __size += util.size_string(b"\n", self.key)
+        if self._value is not None:
+            __size += util.size_message(b"\x12", self._value)
+        return __size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.key:
@@ -156,17 +164,19 @@ class InstrumentationScope(MessageMarshaler):
         self.version = version
         self._attributes = attributes
         self.dropped_attributes_count = dropped_attributes_count
+        super().__init__()
 
+    def calculate_size(self) -> int:
         __size = 0
-        if name:
-            __size += util.size_string(b"\n", name)
-        if version:
-            __size += util.size_string(b"\x12", version)
-        if attributes:
-            __size += util.size_repeated_message(b"\x1a", attributes)
-        if dropped_attributes_count:
-            __size += util.size_uint32(b" ", dropped_attributes_count)
-        super().__init__(__size)
+        if self.name:
+            __size += util.size_string(b"\n", self.name)
+        if self.version:
+            __size += util.size_string(b"\x12", self.version)
+        if self._attributes:
+            __size += util.size_repeated_message(b"\x1a", self._attributes)
+        if self.dropped_attributes_count:
+            __size += util.size_uint32(b" ", self.dropped_attributes_count)
+        return __size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.name:

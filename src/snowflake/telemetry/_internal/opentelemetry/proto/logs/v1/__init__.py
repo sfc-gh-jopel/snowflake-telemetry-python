@@ -57,11 +57,13 @@ class LogsData(MessageMarshaler):
         resource_logs=None,
     ):
         self._resource_logs = resource_logs
+        super().__init__()
 
+    def calculate_size(self) -> int:
         __size = 0
-        if resource_logs:
-            __size += util.size_repeated_message(b"\n", resource_logs)
-        super().__init__(__size)
+        if self._resource_logs:
+            __size += util.size_repeated_message(b"\n", self._resource_logs)
+        return __size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self._resource_logs:
@@ -82,15 +84,17 @@ class ResourceLogs(MessageMarshaler):
         self._resource = resource
         self._scope_logs = scope_logs
         self.schema_url = schema_url
+        super().__init__()
 
+    def calculate_size(self) -> int:
         __size = 0
-        if resource is not None:
-            __size += util.size_message(b"\n", resource)
-        if scope_logs:
-            __size += util.size_repeated_message(b"\x12", scope_logs)
-        if schema_url:
-            __size += util.size_string(b"\x1a", schema_url)
-        super().__init__(__size)
+        if self._resource is not None:
+            __size += util.size_message(b"\n", self._resource)
+        if self._scope_logs:
+            __size += util.size_repeated_message(b"\x12", self._scope_logs)
+        if self.schema_url:
+            __size += util.size_string(b"\x1a", self.schema_url)
+        return __size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self._resource is not None:
@@ -115,15 +119,17 @@ class ScopeLogs(MessageMarshaler):
         self._scope = scope
         self._log_records = log_records
         self.schema_url = schema_url
+        super().__init__()
 
+    def calculate_size(self) -> int:
         __size = 0
-        if scope is not None:
-            __size += util.size_message(b"\n", scope)
-        if log_records:
-            __size += util.size_repeated_message(b"\x12", log_records)
-        if schema_url:
-            __size += util.size_string(b"\x1a", schema_url)
-        super().__init__(__size)
+        if self._scope is not None:
+            __size += util.size_message(b"\n", self._scope)
+        if self._log_records:
+            __size += util.size_repeated_message(b"\x12", self._log_records)
+        if self.schema_url:
+            __size += util.size_string(b"\x1a", self.schema_url)
+        return __size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self._scope is not None:
@@ -169,29 +175,31 @@ class LogRecord(MessageMarshaler):
         self.trace_id = trace_id
         self.span_id = span_id
         self.observed_time_unix_nano = observed_time_unix_nano
+        super().__init__()
 
+    def calculate_size(self) -> int:
         __size = 0
-        if time_unix_nano:
-            __size += util.size_fixed64(b"\t", time_unix_nano)
-        if severity_number:
-            __size += util.size_enum(b"\x10", severity_number)
-        if severity_text:
-            __size += util.size_string(b"\x1a", severity_text)
-        if body is not None:
-            __size += util.size_message(b"*", body)
-        if attributes:
-            __size += util.size_repeated_message(b"2", attributes)
-        if dropped_attributes_count:
-            __size += util.size_uint32(b"8", dropped_attributes_count)
-        if flags:
-            __size += util.size_fixed32(b"E", flags)
-        if trace_id:
-            __size += util.size_bytes(b"J", trace_id)
-        if span_id:
-            __size += util.size_bytes(b"R", span_id)
-        if observed_time_unix_nano:
-            __size += util.size_fixed64(b"Y", observed_time_unix_nano)
-        super().__init__(__size)
+        if self.time_unix_nano:
+            __size += util.size_fixed64(b"\t", self.time_unix_nano)
+        if self.severity_number:
+            __size += util.size_enum(b"\x10", self.severity_number)
+        if self.severity_text:
+            __size += util.size_string(b"\x1a", self.severity_text)
+        if self._body is not None:
+            __size += util.size_message(b"*", self._body)
+        if self._attributes:
+            __size += util.size_repeated_message(b"2", self._attributes)
+        if self.dropped_attributes_count:
+            __size += util.size_uint32(b"8", self.dropped_attributes_count)
+        if self.flags:
+            __size += util.size_fixed32(b"E", self.flags)
+        if self.trace_id:
+            __size += util.size_bytes(b"J", self.trace_id)
+        if self.span_id:
+            __size += util.size_bytes(b"R", self.span_id)
+        if self.observed_time_unix_nano:
+            __size += util.size_fixed64(b"Y", self.observed_time_unix_nano)
+        return __size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.time_unix_nano:

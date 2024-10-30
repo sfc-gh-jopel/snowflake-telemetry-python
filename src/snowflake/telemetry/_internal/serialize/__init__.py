@@ -1,36 +1,50 @@
 import struct
 from enum import IntEnum
-from typing import List, Union
+from typing import List, Union, get_type_hints
 
 Enum = IntEnum
 
 class MessageMarshaler:
-    def __init__(self, size: int) -> None:
-        self.__size = size
+    def __init__(self) -> None:
+        self.__size = None
+
+    def write_to(self, serializer: "ProtoSerializer") -> None:
+        ...
+    
+    def calculate_size(self) -> int:
+        ...
 
     def _get_size(self) -> int:
+        if self.__size is None:
+            self.__size = self.calculate_size()
         return self.__size
     
     def __bytes__(self) -> bytes:
         serializer = ProtoSerializer()
         self.write_to(serializer)
         return bytes(serializer)
+    
+    def SerializeToString(self) -> bytes:
+        return bytes(self)
 
     # Override __getattr__ to mimic behavior of pb2 classes
     # __getattr__ is called when an attribute is not found
     def __getattr__(self, name: str) -> None:
         if name not in self.__annotations__:
             raise AttributeError(name=name, obj=self)
-        annotation = self.__annotations__[name]
-        if annotation.__origin__ is list or annotation.__origin__ is List:
+        _name = f"_{name}"
+        if hasattr(self, _name) and getattr(self, _name) is not None:
+            return getattr(self, _name)
+        annotation = get_type_hints(self.__class__)[name]
+        if hasattr(annotation, "__origin__") and (annotation.__origin__ is list or annotation.__origin__ is List):
             val = []
             setattr(self, name, val)
-            setattr(self, f"_{name}", val)
+            setattr(self, _name, val)
             return val
         elif issubclass(annotation, MessageMarshaler):
             val = annotation()
             setattr(self, name, val)
-            setattr(self, f"_{name}", val)
+            setattr(self, _name, val)
             return val
         else:
             raise AttributeError(name=name, obj=self)

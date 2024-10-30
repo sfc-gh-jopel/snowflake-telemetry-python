@@ -23,11 +23,13 @@ class ExportTraceServiceRequest(MessageMarshaler):
         resource_spans=None,
     ):
         self._resource_spans = resource_spans
+        super().__init__()
 
+    def calculate_size(self) -> int:
         __size = 0
-        if resource_spans:
-            __size += util.size_repeated_message(b"\n", resource_spans)
-        super().__init__(__size)
+        if self._resource_spans:
+            __size += util.size_repeated_message(b"\n", self._resource_spans)
+        return __size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self._resource_spans:
@@ -42,11 +44,13 @@ class ExportTraceServiceResponse(MessageMarshaler):
         partial_success=None,
     ):
         self._partial_success = partial_success
+        super().__init__()
 
+    def calculate_size(self) -> int:
         __size = 0
-        if partial_success is not None:
-            __size += util.size_message(b"\n", partial_success)
-        super().__init__(__size)
+        if self._partial_success is not None:
+            __size += util.size_message(b"\n", self._partial_success)
+        return __size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self._partial_success is not None:
@@ -64,13 +68,15 @@ class ExportTracePartialSuccess(MessageMarshaler):
     ):
         self.rejected_spans = rejected_spans
         self.error_message = error_message
+        super().__init__()
 
+    def calculate_size(self) -> int:
         __size = 0
-        if rejected_spans:
-            __size += util.size_int64(b"\x08", rejected_spans)
-        if error_message:
-            __size += util.size_string(b"\x12", error_message)
-        super().__init__(__size)
+        if self.rejected_spans:
+            __size += util.size_int64(b"\x08", self.rejected_spans)
+        if self.error_message:
+            __size += util.size_string(b"\x12", self.error_message)
+        return __size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.rejected_spans:

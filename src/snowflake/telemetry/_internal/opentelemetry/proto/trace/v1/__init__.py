@@ -31,11 +31,13 @@ class TracesData(MessageMarshaler):
         resource_spans=None,
     ):
         self._resource_spans = resource_spans
+        super().__init__()
 
+    def calculate_size(self) -> int:
         __size = 0
-        if resource_spans:
-            __size += util.size_repeated_message(b"\n", resource_spans)
-        super().__init__(__size)
+        if self._resource_spans:
+            __size += util.size_repeated_message(b"\n", self._resource_spans)
+        return __size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self._resource_spans:
@@ -56,15 +58,17 @@ class ResourceSpans(MessageMarshaler):
         self._resource = resource
         self._scope_spans = scope_spans
         self.schema_url = schema_url
+        super().__init__()
 
+    def calculate_size(self) -> int:
         __size = 0
-        if resource is not None:
-            __size += util.size_message(b"\n", resource)
-        if scope_spans:
-            __size += util.size_repeated_message(b"\x12", scope_spans)
-        if schema_url:
-            __size += util.size_string(b"\x1a", schema_url)
-        super().__init__(__size)
+        if self._resource is not None:
+            __size += util.size_message(b"\n", self._resource)
+        if self._scope_spans:
+            __size += util.size_repeated_message(b"\x12", self._scope_spans)
+        if self.schema_url:
+            __size += util.size_string(b"\x1a", self.schema_url)
+        return __size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self._resource is not None:
@@ -89,15 +93,17 @@ class ScopeSpans(MessageMarshaler):
         self._scope = scope
         self._spans = spans
         self.schema_url = schema_url
+        super().__init__()
 
+    def calculate_size(self) -> int:
         __size = 0
-        if scope is not None:
-            __size += util.size_message(b"\n", scope)
-        if spans:
-            __size += util.size_repeated_message(b"\x12", spans)
-        if schema_url:
-            __size += util.size_string(b"\x1a", schema_url)
-        super().__init__(__size)
+        if self._scope is not None:
+            __size += util.size_message(b"\n", self._scope)
+        if self._spans:
+            __size += util.size_repeated_message(b"\x12", self._spans)
+        if self.schema_url:
+            __size += util.size_string(b"\x1a", self.schema_url)
+        return __size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self._scope is not None:
@@ -161,41 +167,43 @@ class Span(MessageMarshaler):
         self.dropped_links_count = dropped_links_count
         self._status = status
         self.flags = flags
+        super().__init__()
 
+    def calculate_size(self) -> int:
         __size = 0
-        if trace_id:
-            __size += util.size_bytes(b"\n", trace_id)
-        if span_id:
-            __size += util.size_bytes(b"\x12", span_id)
-        if trace_state:
-            __size += util.size_string(b"\x1a", trace_state)
-        if parent_span_id:
-            __size += util.size_bytes(b'"', parent_span_id)
-        if name:
-            __size += util.size_string(b"*", name)
-        if kind:
-            __size += util.size_enum(b"0", kind)
-        if start_time_unix_nano:
-            __size += util.size_fixed64(b"9", start_time_unix_nano)
-        if end_time_unix_nano:
-            __size += util.size_fixed64(b"A", end_time_unix_nano)
-        if attributes:
-            __size += util.size_repeated_message(b"J", attributes)
-        if dropped_attributes_count:
-            __size += util.size_uint32(b"P", dropped_attributes_count)
-        if events:
-            __size += util.size_repeated_message(b"Z", events)
-        if dropped_events_count:
-            __size += util.size_uint32(b"`", dropped_events_count)
-        if links:
-            __size += util.size_repeated_message(b"j", links)
-        if dropped_links_count:
-            __size += util.size_uint32(b"p", dropped_links_count)
-        if status is not None:
-            __size += util.size_message(b"z", status)
-        if flags:
-            __size += util.size_fixed32(b"\x85\x01", flags)
-        super().__init__(__size)
+        if self.trace_id:
+            __size += util.size_bytes(b"\n", self.trace_id)
+        if self.span_id:
+            __size += util.size_bytes(b"\x12", self.span_id)
+        if self.trace_state:
+            __size += util.size_string(b"\x1a", self.trace_state)
+        if self.parent_span_id:
+            __size += util.size_bytes(b'"', self.parent_span_id)
+        if self.name:
+            __size += util.size_string(b"*", self.name)
+        if self.kind:
+            __size += util.size_enum(b"0", self.kind)
+        if self.start_time_unix_nano:
+            __size += util.size_fixed64(b"9", self.start_time_unix_nano)
+        if self.end_time_unix_nano:
+            __size += util.size_fixed64(b"A", self.end_time_unix_nano)
+        if self._attributes:
+            __size += util.size_repeated_message(b"J", self._attributes)
+        if self.dropped_attributes_count:
+            __size += util.size_uint32(b"P", self.dropped_attributes_count)
+        if self._events:
+            __size += util.size_repeated_message(b"Z", self._events)
+        if self.dropped_events_count:
+            __size += util.size_uint32(b"`", self.dropped_events_count)
+        if self._links:
+            __size += util.size_repeated_message(b"j", self._links)
+        if self.dropped_links_count:
+            __size += util.size_uint32(b"p", self.dropped_links_count)
+        if self._status is not None:
+            __size += util.size_message(b"z", self._status)
+        if self.flags:
+            __size += util.size_fixed32(b"\x85\x01", self.flags)
+        return __size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.trace_id:
@@ -256,17 +264,19 @@ class Span(MessageMarshaler):
             self.name = name
             self._attributes = attributes
             self.dropped_attributes_count = dropped_attributes_count
+            super().__init__()
 
+        def calculate_size(self) -> int:
             __size = 0
-            if time_unix_nano:
-                __size += util.size_fixed64(b"\t", time_unix_nano)
-            if name:
-                __size += util.size_string(b"\x12", name)
-            if attributes:
-                __size += util.size_repeated_message(b"\x1a", attributes)
-            if dropped_attributes_count:
-                __size += util.size_uint32(b" ", dropped_attributes_count)
-            super().__init__(__size)
+            if self.time_unix_nano:
+                __size += util.size_fixed64(b"\t", self.time_unix_nano)
+            if self.name:
+                __size += util.size_string(b"\x12", self.name)
+            if self._attributes:
+                __size += util.size_repeated_message(b"\x1a", self._attributes)
+            if self.dropped_attributes_count:
+                __size += util.size_uint32(b" ", self.dropped_attributes_count)
+            return __size
 
         def write_to(self, proto_serializer: ProtoSerializer) -> None:
             if self.time_unix_nano:
@@ -301,21 +311,23 @@ class Span(MessageMarshaler):
             self._attributes = attributes
             self.dropped_attributes_count = dropped_attributes_count
             self.flags = flags
+            super().__init__()
 
+        def calculate_size(self) -> int:
             __size = 0
-            if trace_id:
-                __size += util.size_bytes(b"\n", trace_id)
-            if span_id:
-                __size += util.size_bytes(b"\x12", span_id)
-            if trace_state:
-                __size += util.size_string(b"\x1a", trace_state)
-            if attributes:
-                __size += util.size_repeated_message(b'"', attributes)
-            if dropped_attributes_count:
-                __size += util.size_uint32(b"(", dropped_attributes_count)
-            if flags:
-                __size += util.size_fixed32(b"5", flags)
-            super().__init__(__size)
+            if self.trace_id:
+                __size += util.size_bytes(b"\n", self.trace_id)
+            if self.span_id:
+                __size += util.size_bytes(b"\x12", self.span_id)
+            if self.trace_state:
+                __size += util.size_string(b"\x1a", self.trace_state)
+            if self._attributes:
+                __size += util.size_repeated_message(b'"', self._attributes)
+            if self.dropped_attributes_count:
+                __size += util.size_uint32(b"(", self.dropped_attributes_count)
+            if self.flags:
+                __size += util.size_fixed32(b"5", self.flags)
+            return __size
 
         def write_to(self, proto_serializer: ProtoSerializer) -> None:
             if self.trace_id:
@@ -343,13 +355,15 @@ class Status(MessageMarshaler):
     ):
         self.message = message
         self.code = code
+        super().__init__()
 
+    def calculate_size(self) -> int:
         __size = 0
-        if message:
-            __size += util.size_string(b"\x12", message)
-        if code:
-            __size += util.size_enum(b"\x18", code)
-        super().__init__(__size)
+        if self.message:
+            __size += util.size_string(b"\x12", self.message)
+        if self.code:
+            __size += util.size_enum(b"\x18", self.code)
+        return __size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.message:

@@ -35,13 +35,15 @@ class {{ message.name }}(MessageMarshaler):
 {%- for field in message.fields %}
         self.{{ field.name }} = {{ field.hint_name }}
 {%- endfor %}
+        super().__init__()
 
+    def calculate_size(self) -> int:
         __size = 0
 {%- for field in message.fields %}
-        if {{ field.hint_name }}{% if field.encode_presence %} is not None{% endif %}: {% if field.group %}# oneof group {{ field.group }}{% endif %}
-            __size += util.size_{{ field.proto_type }}({{ field.tag }}, {{ field.hint_name }})
+        if self.{{ field.name }}{% if field.encode_presence %} is not None{% endif %}: {% if field.group %}# oneof group {{ field.group }}{% endif %}
+            __size += util.size_{{ field.proto_type }}({{ field.tag }}, self.{{ field.name }})
 {%- endfor %}
-        super().__init__(__size)
+        return __size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
 {%- for field in message.fields %}
