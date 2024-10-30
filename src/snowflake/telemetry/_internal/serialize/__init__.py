@@ -4,6 +4,37 @@ from typing import List, Union
 
 Enum = IntEnum
 
+class MessageMarshaler:
+    def __init__(self, size: int) -> None:
+        self.__size = size
+
+    def _get_size(self) -> int:
+        return self.__size
+    
+    def __bytes__(self) -> bytes:
+        serializer = ProtoSerializer()
+        self.write_to(serializer)
+        return bytes(serializer)
+
+    # Override __getattr__ to mimic behavior of pb2 classes
+    # __getattr__ is called when an attribute is not found
+    def __getattr__(self, name: str) -> None:
+        if name not in self.__annotations__:
+            raise AttributeError(name=name, obj=self)
+        annotation = self.__annotations__[name]
+        if annotation.__origin__ is list or annotation.__origin__ is List:
+            val = []
+            setattr(self, name, val)
+            setattr(self, f"_{name}", val)
+            return val
+        elif issubclass(annotation, MessageMarshaler):
+            val = annotation()
+            setattr(self, name, val)
+            setattr(self, f"_{name}", val)
+            return val
+        else:
+            raise AttributeError(name=name, obj=self)
+
 class ProtoSerializer:
     __slots__ = ("out")
 
@@ -82,7 +113,7 @@ class ProtoSerializer:
     def serialize_message(
             self, 
             tag: bytes, 
-            value: bytes,
+            value: MessageMarshaler,
         ) -> None:
         # If value is None, omit message entirely
         if value is None:
@@ -91,13 +122,13 @@ class ProtoSerializer:
         # Even if all fields are default (ommnited)
         # The presence of the message is still encoded
         self.out += tag
-        self._write_varint_unsigned(len(value))
-        self.out += value
+        self._write_varint_unsigned(value._get_size())
+        value.write_to(self)
 
     def serialize_repeated_message(
             self, 
             tag: bytes, 
-            values: List[bytes],
+            values: List[MessageMarshaler],
         ) -> None:
         if not values:
             return

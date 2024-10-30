@@ -13,11 +13,11 @@ import opentelemetry.proto.common.v1.common_pb2 as common_pb2
 import opentelemetry.proto.metrics.v1.metrics_pb2 as metrics_pb2
 import opentelemetry.proto.resource.v1.resource_pb2 as resource_pb2
 
-import snowflake.telemetry._internal.opentelemetry.proto.logs.v1.logs as logs_sf
-import snowflake.telemetry._internal.opentelemetry.proto.trace.v1.trace as trace_sf
-import snowflake.telemetry._internal.opentelemetry.proto.common.v1.common as common_sf
-import snowflake.telemetry._internal.opentelemetry.proto.metrics.v1.metrics as metrics_sf
-import snowflake.telemetry._internal.opentelemetry.proto.resource.v1.resource as resource_sf
+import snowflake.telemetry._internal.opentelemetry.proto.logs.v1 as logs_sf
+import snowflake.telemetry._internal.opentelemetry.proto.trace.v1 as trace_sf
+import snowflake.telemetry._internal.opentelemetry.proto.common.v1 as common_sf
+import snowflake.telemetry._internal.opentelemetry.proto.metrics.v1 as metrics_sf
+import snowflake.telemetry._internal.opentelemetry.proto.resource.v1 as resource_sf
 
 # Strategy for generating protobuf types
 def pb_uint32(): return integers(min_value=0, max_value=2**32-1)
@@ -70,8 +70,8 @@ TracesData = EncodeStrategy(pb2=trace_pb2.TracesData, sf=trace_sf.TracesData)
 ScopeSpans = EncodeStrategy(pb2=trace_pb2.ScopeSpans, sf=trace_sf.ScopeSpans)
 ResourceSpans = EncodeStrategy(pb2=trace_pb2.ResourceSpans, sf=trace_sf.ResourceSpans)
 Span = EncodeStrategy(pb2=trace_pb2.Span, sf=trace_sf.Span)
-Event = EncodeStrategy(pb2=trace_pb2.Span.Event, sf=trace_sf.Span_Event)
-Link = EncodeStrategy(pb2=trace_pb2.Span.Link, sf=trace_sf.Span_Link)
+Event = EncodeStrategy(pb2=trace_pb2.Span.Event, sf=trace_sf.Span.Event)
+Link = EncodeStrategy(pb2=trace_pb2.Span.Link, sf=trace_sf.Span.Link)
 Status = EncodeStrategy(pb2=trace_pb2.Status, sf=trace_sf.Status)
 
 Metric = EncodeStrategy(pb2=metrics_pb2.Metric, sf=metrics_sf.Metric)
@@ -88,8 +88,8 @@ Exemplar = EncodeStrategy(pb2=metrics_pb2.Exemplar, sf=metrics_sf.Exemplar)
 HistogramDataPoint = EncodeStrategy(pb2=metrics_pb2.HistogramDataPoint, sf=metrics_sf.HistogramDataPoint)
 ExponentialHistogramDataPoint = EncodeStrategy(pb2=metrics_pb2.ExponentialHistogramDataPoint, sf=metrics_sf.ExponentialHistogramDataPoint)
 SummaryDataPoint = EncodeStrategy(pb2=metrics_pb2.SummaryDataPoint, sf=metrics_sf.SummaryDataPoint)
-ValueAtQuantile = EncodeStrategy(pb2=metrics_pb2.SummaryDataPoint.ValueAtQuantile, sf=metrics_sf.SummaryDataPoint_ValueAtQuantile)
-Buckets = EncodeStrategy(pb2=metrics_pb2.ExponentialHistogramDataPoint.Buckets, sf=metrics_sf.ExponentialHistogramDataPoint_Buckets)
+ValueAtQuantile = EncodeStrategy(pb2=metrics_pb2.SummaryDataPoint.ValueAtQuantile, sf=metrics_sf.SummaryDataPoint.ValueAtQuantile)
+Buckets = EncodeStrategy(pb2=metrics_pb2.ExponentialHistogramDataPoint.Buckets, sf=metrics_sf.ExponentialHistogramDataPoint.Buckets)
 
 
 # Package the protobuf type with its arguments for serialization
@@ -216,7 +216,7 @@ def traces_data(draw):
     @composite
     def status(draw):
         return EncodeWithArgs({
-            "code": draw(pb_enum(trace_sf.Status_StatusCode)),
+            "code": draw(pb_enum(trace_sf.Status.StatusCode)),
             "message": draw(pb_string()),
         }, Status)
     
@@ -228,7 +228,7 @@ def traces_data(draw):
             "trace_state": draw(pb_string()),
             "parent_span_id": draw(pb_span_id()),
             "name": draw(pb_string()),
-            "kind": draw(pb_enum(trace_sf.Span_SpanKind)),
+            "kind": draw(pb_enum(trace_sf.Span.SpanKind)),
             "start_time_unix_nano": draw(pb_fixed64()),
             "end_time_unix_nano": draw(pb_fixed64()),
             "attributes": draw(pb_repeated(key_value())),

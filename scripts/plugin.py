@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import re
 import os
 import sys
 from dataclasses import dataclass, field
@@ -31,25 +32,26 @@ class ProtoTypeDescriptor:
     name: str
     wire_type: WireType
     python_type: str
+    default_val: str
 
 proto_type_to_descriptor = {
-    FieldDescriptorProto.TYPE_BOOL: ProtoTypeDescriptor("bool", WireType.VARINT, "bool"),
-    FieldDescriptorProto.TYPE_ENUM: ProtoTypeDescriptor("enum", WireType.VARINT, "int"),
-    FieldDescriptorProto.TYPE_INT32: ProtoTypeDescriptor("int32", WireType.VARINT, "int"),
-    FieldDescriptorProto.TYPE_INT64: ProtoTypeDescriptor("int64", WireType.VARINT, "int"),
-    FieldDescriptorProto.TYPE_UINT32: ProtoTypeDescriptor("uint32", WireType.VARINT, "int"),
-    FieldDescriptorProto.TYPE_UINT64: ProtoTypeDescriptor("uint64", WireType.VARINT, "int"),
-    FieldDescriptorProto.TYPE_SINT32: ProtoTypeDescriptor("sint32", WireType.VARINT, "int"),
-    FieldDescriptorProto.TYPE_SINT64: ProtoTypeDescriptor("sint64", WireType.VARINT, "int"),
-    FieldDescriptorProto.TYPE_FIXED32: ProtoTypeDescriptor("fixed32", WireType.I32, "int"),
-    FieldDescriptorProto.TYPE_FIXED64: ProtoTypeDescriptor("fixed64", WireType.I64, "int"),
-    FieldDescriptorProto.TYPE_SFIXED32: ProtoTypeDescriptor("sfixed32", WireType.I32, "int"),
-    FieldDescriptorProto.TYPE_SFIXED64: ProtoTypeDescriptor("sfixed64", WireType.I64, "int"),
-    FieldDescriptorProto.TYPE_FLOAT: ProtoTypeDescriptor("float", WireType.I32, "float"),
-    FieldDescriptorProto.TYPE_DOUBLE: ProtoTypeDescriptor("double", WireType.I64, "float"),
-    FieldDescriptorProto.TYPE_STRING: ProtoTypeDescriptor("string", WireType.LEN, "str"),
-    FieldDescriptorProto.TYPE_BYTES: ProtoTypeDescriptor("bytes", WireType.LEN, "bytes"),
-    FieldDescriptorProto.TYPE_MESSAGE: ProtoTypeDescriptor("message", WireType.LEN, "bytes"),
+    FieldDescriptorProto.TYPE_BOOL: ProtoTypeDescriptor("bool", WireType.VARINT, "bool", "False"),
+    FieldDescriptorProto.TYPE_ENUM: ProtoTypeDescriptor("enum", WireType.VARINT, "int", "0"),
+    FieldDescriptorProto.TYPE_INT32: ProtoTypeDescriptor("int32", WireType.VARINT, "int", "0"),
+    FieldDescriptorProto.TYPE_INT64: ProtoTypeDescriptor("int64", WireType.VARINT, "int", "0"),
+    FieldDescriptorProto.TYPE_UINT32: ProtoTypeDescriptor("uint32", WireType.VARINT, "int", "0"),
+    FieldDescriptorProto.TYPE_UINT64: ProtoTypeDescriptor("uint64", WireType.VARINT, "int", "0"),
+    FieldDescriptorProto.TYPE_SINT32: ProtoTypeDescriptor("sint32", WireType.VARINT, "int", "0"),
+    FieldDescriptorProto.TYPE_SINT64: ProtoTypeDescriptor("sint64", WireType.VARINT, "int", "0"),
+    FieldDescriptorProto.TYPE_FIXED32: ProtoTypeDescriptor("fixed32", WireType.I32, "int", "0"),
+    FieldDescriptorProto.TYPE_FIXED64: ProtoTypeDescriptor("fixed64", WireType.I64, "int", "0"),
+    FieldDescriptorProto.TYPE_SFIXED32: ProtoTypeDescriptor("sfixed32", WireType.I32, "int", "0"),
+    FieldDescriptorProto.TYPE_SFIXED64: ProtoTypeDescriptor("sfixed64", WireType.I64, "int", "0"),
+    FieldDescriptorProto.TYPE_FLOAT: ProtoTypeDescriptor("float", WireType.I32, "float", "0.0"),
+    FieldDescriptorProto.TYPE_DOUBLE: ProtoTypeDescriptor("double", WireType.I64, "float", "0.0"),
+    FieldDescriptorProto.TYPE_STRING: ProtoTypeDescriptor("string", WireType.LEN, "str", '""'),
+    FieldDescriptorProto.TYPE_BYTES: ProtoTypeDescriptor("bytes", WireType.LEN, "bytes", 'b""'),
+    FieldDescriptorProto.TYPE_MESSAGE: ProtoTypeDescriptor("message", WireType.LEN, "PLACEHOLDER", "None"),
 }
 
 @dataclass
@@ -72,7 +74,7 @@ class EnumTemplate:
     @staticmethod
     def from_descriptor(descriptor: EnumDescriptorProto, parent: str = "") -> "EnumTemplate":
         return EnumTemplate(
-            name=parent + "_" +  descriptor.name if parent else descriptor.name,
+            name=descriptor.name,
             values=[EnumValueTemplate.from_descriptor(value) for value in descriptor.value],
         )
 
@@ -94,6 +96,8 @@ class FieldTemplate:
     repeated: bool
     group: str
     encode_presence: bool
+    default_val: str
+    hint_name: str
 
     @staticmethod
     def from_descriptor(descriptor: FieldDescriptorProto, group: Optional[str] = None) -> "FieldTemplate":
@@ -102,10 +106,20 @@ class FieldTemplate:
 
         python_type = type_descriptor.python_type
         proto_type = type_descriptor.name
+        default_val = type_descriptor.default_val
+        if proto_type == "message":
+            python_type = re.sub(r"^[a-zA-Z0-9_\.]+\.v1\.", "", descriptor.type_name)
+            python_type = f'"{python_type}"'
 
         if repeated:
             python_type = f"List[{python_type}]"
             proto_type = f"repeated_{proto_type}"
+            default_val = "None"
+        
+        name = descriptor.name
+        hint_name = name
+        if repeated or proto_type == "message":
+            name = f"_{name}"
 
         tag = (descriptor.number << 3) | type_descriptor.wire_type.value
         if repeated and type_descriptor.wire_type != WireType.LEN:
@@ -119,9 +133,11 @@ class FieldTemplate:
         # For group / oneof fields, we need to encode the presence of the field
         # For message fields, we need to encode the presence of the field if it is not None
         encode_presence = group is not None or proto_type == "message"
+        if group is not None:
+            default_val = "None"
 
         return FieldTemplate(
-            name=descriptor.name,
+            name=name,
             tag=tag,
             number=descriptor.number,
             python_type=python_type,
@@ -129,6 +145,8 @@ class FieldTemplate:
             repeated=repeated,
             group=group,
             encode_presence=encode_presence,
+            default_val=default_val,
+            hint_name=hint_name,
         )
 
 @dataclass
@@ -137,6 +155,7 @@ class MessageTemplate:
     fields: List[FieldTemplate] = field(default_factory=list)
     enums: List["EnumTemplate"] = field(default_factory=list)
     messages: List["MessageTemplate"] = field(default_factory=list)
+    type_hints: List[str] = field(default_factory=list)
 
     @staticmethod
     def from_descriptor(descriptor: DescriptorProto, parent: str = "") -> "MessageTemplate":
@@ -145,7 +164,7 @@ class MessageTemplate:
         fields = [FieldTemplate.from_descriptor(field, get_group(field)) for field in descriptor.field]
         fields.sort(key=lambda field: field.number)
 
-        name = parent + "_" + descriptor.name if parent else descriptor.name
+        name = descriptor.name
         return MessageTemplate(
             name=name,
             fields=fields,
@@ -185,13 +204,24 @@ class FileTemplate:
     enums: List["EnumTemplate"] = field(default_factory=list)
     services: List["ServiceTemplate"] = field(default_factory=list)
     name: str = ""
+    imports: List[str] = field(default_factory=list)
 
     @staticmethod
     def from_descriptor(descriptor: FileDescriptorProto) -> "FileTemplate":
+        imports = []
+        for dependency in descriptor.dependency:
+            path = re.sub(r"/[a-zA-Z0-9_]+\.proto$", "", dependency)
+            if descriptor.name.startswith(path):
+                continue
+            path = path.replace("/", ".")
+            path = "snowflake.telemetry._internal." + path
+            imports.append(path)
+
         return FileTemplate(
             messages=[MessageTemplate.from_descriptor(message) for message in descriptor.message_type],
             enums=[EnumTemplate.from_descriptor(enum) for enum in descriptor.enum_type],
             services=[ServiceTemplate.from_descriptor(service) for service in descriptor.service],
+            imports=imports,
             name=descriptor.name,
         )
 
@@ -207,7 +237,7 @@ def main():
     jinja_body_template = template_env.get_template("template.py.jinja2")
 
     for proto_file in request.proto_file:
-        file_name = proto_file.name.replace('.proto', '.py')
+        file_name = re.sub(r"[a-zA-Z0-9_]+\.proto$", "__init__.py", proto_file.name)
         file_descriptor_proto = proto_file
 
         file_template = FileTemplate.from_descriptor(file_descriptor_proto)
