@@ -159,9 +159,6 @@ class TestOTLPMetricsEncoder(unittest.TestCase):
                 )
             ]
         )
-        print("--")
-        print(encode_metrics(metrics_data).SerializeToString())
-        print(expected.SerializeToString())
         actual = encode_metrics(metrics_data).SerializeToString()
         self.assertEqual(expected.SerializeToString(), actual)
         self.metric_writer.clear()

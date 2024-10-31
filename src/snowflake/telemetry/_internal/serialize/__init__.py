@@ -27,28 +27,6 @@ class MessageMarshaler:
     def SerializeToString(self) -> bytes:
         return bytes(self)
 
-    # Override __getattr__ to mimic behavior of pb2 classes
-    # __getattr__ is called when an attribute is not found
-    def __getattr__(self, name: str) -> None:
-        if name not in self.__annotations__:
-            raise AttributeError(name=name, obj=self)
-        _name = f"_{name}"
-        if hasattr(self, _name) and getattr(self, _name) is not None:
-            return getattr(self, _name)
-        annotation = get_type_hints(self.__class__)[name]
-        if hasattr(annotation, "__origin__") and (annotation.__origin__ is list or annotation.__origin__ is List):
-            val = []
-            setattr(self, name, val)
-            setattr(self, _name, val)
-            return val
-        elif issubclass(annotation, MessageMarshaler):
-            val = annotation()
-            setattr(self, name, val)
-            setattr(self, _name, val)
-            return val
-        else:
-            raise AttributeError(name=name, obj=self)
-
 class ProtoSerializer:
     __slots__ = ("out")
 

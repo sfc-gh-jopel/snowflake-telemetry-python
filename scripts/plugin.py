@@ -97,7 +97,6 @@ class FieldTemplate:
     group: str
     encode_presence: bool
     default_val: str
-    hint_name: str
 
     @staticmethod
     def from_descriptor(descriptor: FieldDescriptorProto, group: Optional[str] = None) -> "FieldTemplate":
@@ -109,7 +108,6 @@ class FieldTemplate:
         default_val = type_descriptor.default_val
         if proto_type == "message":
             python_type = re.sub(r"^[a-zA-Z0-9_\.]+\.v1\.", "", descriptor.type_name)
-            python_type = f'"{python_type}"'
 
         if repeated:
             python_type = f"List[{python_type}]"
@@ -117,9 +115,6 @@ class FieldTemplate:
             default_val = "None"
         
         name = descriptor.name
-        hint_name = name
-        if repeated or proto_type == "message":
-            name = f"_{name}"
 
         tag = (descriptor.number << 3) | type_descriptor.wire_type.value
         if repeated and type_descriptor.wire_type != WireType.LEN:
@@ -146,7 +141,6 @@ class FieldTemplate:
             group=group,
             encode_presence=encode_presence,
             default_val=default_val,
-            hint_name=hint_name,
         )
 
 @dataclass

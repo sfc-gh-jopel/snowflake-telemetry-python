@@ -199,6 +199,7 @@ def encode_metrics(data: MetricsData) -> ExportMetricsServiceRequest:
                     version=instrumentation_scope.version,
                 )
             )
+            pb2_scope_metrics.metrics = []
 
             scope_metrics_dict[instrumentation_scope] = pb2_scope_metrics
 
@@ -210,6 +211,8 @@ def encode_metrics(data: MetricsData) -> ExportMetricsServiceRequest:
                 )
 
                 if isinstance(metric.data, Gauge):
+                    pb2_metric.gauge = pb2.Gauge()
+                    pb2_metric.gauge.data_points = []
                     for data_point in metric.data.data_points:
                         pt = pb2.NumberDataPoint(
                             attributes=_encode_attributes(
@@ -224,6 +227,8 @@ def encode_metrics(data: MetricsData) -> ExportMetricsServiceRequest:
                         pb2_metric.gauge.data_points.append(pt)
 
                 elif isinstance(metric.data, HistogramType):
+                    pb2_metric.histogram = pb2.Histogram()
+                    pb2_metric.histogram.data_points = []
                     for data_point in metric.data.data_points:
                         pt = pb2.HistogramDataPoint(
                             attributes=_encode_attributes(
@@ -246,6 +251,8 @@ def encode_metrics(data: MetricsData) -> ExportMetricsServiceRequest:
                         pb2_metric.histogram.data_points.append(pt)
 
                 elif isinstance(metric.data, Sum):
+                    pb2_metric.sum = pb2.Sum()
+                    pb2_metric.sum.data_points = []
                     for data_point in metric.data.data_points:
                         pt = pb2.NumberDataPoint(
                             attributes=_encode_attributes(
@@ -270,6 +277,8 @@ def encode_metrics(data: MetricsData) -> ExportMetricsServiceRequest:
                         pb2_metric.sum.data_points.append(pt)
 
                 elif isinstance(metric.data, ExponentialHistogramType):
+                    pb2_metric.exponential_histogram = pb2.ExponentialHistogram()
+                    pb2_metric.exponential_histogram.data_points = []
                     for data_point in metric.data.data_points:
 
                         if data_point.positive.bucket_counts:
