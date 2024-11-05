@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import struct
+from io import BytesIO
 from typing import (
     List,
     Optional,
@@ -14,9 +15,9 @@ from snowflake.telemetry._internal.opentelemetry.proto.resource.v1 import *
 from snowflake.telemetry._internal.serialize import (
     Enum,
     MessageMarshaler,
-    ProtoSerializer,
     size_varint32,
     size_varint64,
+    write_varint_unsigned,
 )
 
 
@@ -69,12 +70,12 @@ class LogsData(MessageMarshaler):
             )
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.resource_logs:
             for v in self.resource_logs:
-                proto_serializer.out.write(b"\n")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"\n")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
 
 
 class ResourceLogs(MessageMarshaler):
@@ -107,21 +108,21 @@ class ResourceLogs(MessageMarshaler):
             size += len(b"\x1a") + size_varint32(len(v)) + len(v)
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.resource is not None:
-            proto_serializer.out.write(b"\n")
-            proto_serializer._write_varint_unsigned(self.resource._get_size())
-            self.resource.write_to(proto_serializer)
+            out.write(b"\n")
+            write_varint_unsigned(out, self.resource._get_size())
+            self.resource.write_to(out)
         if self.scope_logs:
             for v in self.scope_logs:
-                proto_serializer.out.write(b"\x12")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"\x12")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
         if self.schema_url:
             v = self._schema_url_encoded
-            proto_serializer.out.write(b"\x1a")
-            proto_serializer._write_varint_unsigned(len(v))
-            proto_serializer.out.write(v)
+            out.write(b"\x1a")
+            write_varint_unsigned(out, len(v))
+            out.write(v)
 
 
 class ScopeLogs(MessageMarshaler):
@@ -154,21 +155,21 @@ class ScopeLogs(MessageMarshaler):
             size += len(b"\x1a") + size_varint32(len(v)) + len(v)
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.scope is not None:
-            proto_serializer.out.write(b"\n")
-            proto_serializer._write_varint_unsigned(self.scope._get_size())
-            self.scope.write_to(proto_serializer)
+            out.write(b"\n")
+            write_varint_unsigned(out, self.scope._get_size())
+            self.scope.write_to(out)
         if self.log_records:
             for v in self.log_records:
-                proto_serializer.out.write(b"\x12")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"\x12")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
         if self.schema_url:
             v = self._schema_url_encoded
-            proto_serializer.out.write(b"\x1a")
-            proto_serializer._write_varint_unsigned(len(v))
-            proto_serializer.out.write(v)
+            out.write(b"\x1a")
+            write_varint_unsigned(out, len(v))
+            out.write(v)
 
 
 class LogRecord(MessageMarshaler):
@@ -230,44 +231,44 @@ class LogRecord(MessageMarshaler):
             size += len(b"Y") + 8
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.time_unix_nano:
-            proto_serializer.out.write(b"\t")
-            proto_serializer.out.write(struct.pack("<Q", self.time_unix_nano))
+            out.write(b"\t")
+            out.write(struct.pack("<Q", self.time_unix_nano))
         if self.severity_number:
             v = self.severity_number
             if not isinstance(v, int):
                 v = v.self.severity_number
-            proto_serializer.out.write(b"\x10")
-            proto_serializer._write_varint_unsigned(v)
+            out.write(b"\x10")
+            write_varint_unsigned(out, v)
         if self.severity_text:
             v = self._severity_text_encoded
-            proto_serializer.out.write(b"\x1a")
-            proto_serializer._write_varint_unsigned(len(v))
-            proto_serializer.out.write(v)
+            out.write(b"\x1a")
+            write_varint_unsigned(out, len(v))
+            out.write(v)
         if self.body is not None:
-            proto_serializer.out.write(b"*")
-            proto_serializer._write_varint_unsigned(self.body._get_size())
-            self.body.write_to(proto_serializer)
+            out.write(b"*")
+            write_varint_unsigned(out, self.body._get_size())
+            self.body.write_to(out)
         if self.attributes:
             for v in self.attributes:
-                proto_serializer.out.write(b"2")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"2")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
         if self.dropped_attributes_count:
-            proto_serializer.out.write(b"8")
-            proto_serializer._write_varint_unsigned(self.dropped_attributes_count)
+            out.write(b"8")
+            write_varint_unsigned(out, self.dropped_attributes_count)
         if self.flags:
-            proto_serializer.out.write(b"E")
-            proto_serializer.out.write(struct.pack("<I", self.flags))
+            out.write(b"E")
+            out.write(struct.pack("<I", self.flags))
         if self.trace_id:
-            proto_serializer.out.write(b"J")
-            proto_serializer._write_varint_unsigned(len(self.trace_id))
-            proto_serializer.out.write(self.trace_id)
+            out.write(b"J")
+            write_varint_unsigned(out, len(self.trace_id))
+            out.write(self.trace_id)
         if self.span_id:
-            proto_serializer.out.write(b"R")
-            proto_serializer._write_varint_unsigned(len(self.span_id))
-            proto_serializer.out.write(self.span_id)
+            out.write(b"R")
+            write_varint_unsigned(out, len(self.span_id))
+            out.write(self.span_id)
         if self.observed_time_unix_nano:
-            proto_serializer.out.write(b"Y")
-            proto_serializer.out.write(struct.pack("<Q", self.observed_time_unix_nano))
+            out.write(b"Y")
+            out.write(struct.pack("<Q", self.observed_time_unix_nano))

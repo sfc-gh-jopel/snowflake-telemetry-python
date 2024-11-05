@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import struct
+from io import BytesIO
 from typing import (
     List,
     Optional,
@@ -13,9 +14,9 @@ from snowflake.telemetry._internal.opentelemetry.proto.common.v1 import *
 from snowflake.telemetry._internal.serialize import (
     Enum,
     MessageMarshaler,
-    ProtoSerializer,
     size_varint32,
     size_varint64,
+    write_varint_unsigned,
 )
 
 
@@ -39,12 +40,12 @@ class Resource(MessageMarshaler):
             size += len(b"\x10") + size_varint32(self.dropped_attributes_count)
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.attributes:
             for v in self.attributes:
-                proto_serializer.out.write(b"\n")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"\n")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
         if self.dropped_attributes_count:
-            proto_serializer.out.write(b"\x10")
-            proto_serializer._write_varint_unsigned(self.dropped_attributes_count)
+            out.write(b"\x10")
+            write_varint_unsigned(out, self.dropped_attributes_count)

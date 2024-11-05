@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import struct
+from io import BytesIO
 from typing import (
     List,
     Optional,
@@ -12,9 +13,9 @@ from typing import (
 from snowflake.telemetry._internal.serialize import (
     Enum,
     MessageMarshaler,
-    ProtoSerializer,
     size_varint32,
     size_varint64,
+    write_varint_unsigned,
 )
 
 
@@ -69,35 +70,36 @@ class AnyValue(MessageMarshaler):
             )
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.string_value is not None:
             v = self._string_value_encoded
-            proto_serializer.out.write(b"\n")
-            proto_serializer._write_varint_unsigned(len(v))
-            proto_serializer.out.write(v)
+            out.write(b"\n")
+            write_varint_unsigned(out, len(v))
+            out.write(v)
         if self.bool_value is not None:
-            proto_serializer.out.write(b"\x10")
-            proto_serializer._write_varint_unsigned(1 if self.bool_value else 0)
+            out.write(b"\x10")
+            write_varint_unsigned(out, 1 if self.bool_value else 0)
         if self.int_value is not None:
-            proto_serializer.out.write(b"\x18")
-            proto_serializer._write_varint_unsigned(
-                self.int_value + (1 << 64) if self.int_value < 0 else self.int_value
+            out.write(b"\x18")
+            write_varint_unsigned(
+                out,
+                self.int_value + (1 << 64) if self.int_value < 0 else self.int_value,
             )
         if self.double_value is not None:
-            proto_serializer.out.write(b"!")
-            proto_serializer.out.write(struct.pack("<d", self.double_value))
+            out.write(b"!")
+            out.write(struct.pack("<d", self.double_value))
         if self.array_value is not None:
-            proto_serializer.out.write(b"*")
-            proto_serializer._write_varint_unsigned(self.array_value._get_size())
-            self.array_value.write_to(proto_serializer)
+            out.write(b"*")
+            write_varint_unsigned(out, self.array_value._get_size())
+            self.array_value.write_to(out)
         if self.kvlist_value is not None:
-            proto_serializer.out.write(b"2")
-            proto_serializer._write_varint_unsigned(self.kvlist_value._get_size())
-            self.kvlist_value.write_to(proto_serializer)
+            out.write(b"2")
+            write_varint_unsigned(out, self.kvlist_value._get_size())
+            self.kvlist_value.write_to(out)
         if self.bytes_value is not None:
-            proto_serializer.out.write(b":")
-            proto_serializer._write_varint_unsigned(len(self.bytes_value))
-            proto_serializer.out.write(self.bytes_value)
+            out.write(b":")
+            write_varint_unsigned(out, len(self.bytes_value))
+            out.write(self.bytes_value)
 
 
 class ArrayValue(MessageMarshaler):
@@ -116,12 +118,12 @@ class ArrayValue(MessageMarshaler):
             )
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.values:
             for v in self.values:
-                proto_serializer.out.write(b"\n")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"\n")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
 
 
 class KeyValueList(MessageMarshaler):
@@ -140,12 +142,12 @@ class KeyValueList(MessageMarshaler):
             )
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.values:
             for v in self.values:
-                proto_serializer.out.write(b"\n")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"\n")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
 
 
 class KeyValue(MessageMarshaler):
@@ -171,16 +173,16 @@ class KeyValue(MessageMarshaler):
             )
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.key:
             v = self._key_encoded
-            proto_serializer.out.write(b"\n")
-            proto_serializer._write_varint_unsigned(len(v))
-            proto_serializer.out.write(v)
+            out.write(b"\n")
+            write_varint_unsigned(out, len(v))
+            out.write(v)
         if self.value is not None:
-            proto_serializer.out.write(b"\x12")
-            proto_serializer._write_varint_unsigned(self.value._get_size())
-            self.value.write_to(proto_serializer)
+            out.write(b"\x12")
+            write_varint_unsigned(out, self.value._get_size())
+            self.value.write_to(out)
 
 
 class InstrumentationScope(MessageMarshaler):
@@ -215,22 +217,22 @@ class InstrumentationScope(MessageMarshaler):
             size += len(b" ") + size_varint32(self.dropped_attributes_count)
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.name:
             v = self._name_encoded
-            proto_serializer.out.write(b"\n")
-            proto_serializer._write_varint_unsigned(len(v))
-            proto_serializer.out.write(v)
+            out.write(b"\n")
+            write_varint_unsigned(out, len(v))
+            out.write(v)
         if self.version:
             v = self._version_encoded
-            proto_serializer.out.write(b"\x12")
-            proto_serializer._write_varint_unsigned(len(v))
-            proto_serializer.out.write(v)
+            out.write(b"\x12")
+            write_varint_unsigned(out, len(v))
+            out.write(v)
         if self.attributes:
             for v in self.attributes:
-                proto_serializer.out.write(b"\x1a")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"\x1a")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
         if self.dropped_attributes_count:
-            proto_serializer.out.write(b" ")
-            proto_serializer._write_varint_unsigned(self.dropped_attributes_count)
+            out.write(b" ")
+            write_varint_unsigned(out, self.dropped_attributes_count)

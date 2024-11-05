@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import struct
 from enum import IntEnum
 from io import BytesIO
 
@@ -17,10 +18,16 @@ def size_varint64(value: int) -> int:
         size += 1
     return size
 
+def write_varint_unsigned(out: BytesIO, value: int) -> None:
+    while value >= 128:
+        out.write(struct.pack("B", value & 0x7F | 0x80))
+        value >>= 7
+    out.write(struct.pack("B", value))
+
 Enum = IntEnum
 
 class MessageMarshaler:
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         ...
     
     def calculate_size(self) -> int:
@@ -32,26 +39,11 @@ class MessageMarshaler:
         return self._size
     
     def __bytes__(self) -> bytes:
-        serializer = ProtoSerializer(self._get_size())
-        self.write_to(serializer)
-        return bytes(serializer)
+        with BytesIO(initial_bytes=b"\0" * self._get_size()) as stream:
+            self.write_to(stream)
+            return stream.getvalue()
     
     def SerializeToString(self) -> bytes:
-        return bytes(self)
-
-class ProtoSerializer:
-    def __init__(self, size) -> None:
-        self.out = BytesIO(initial_bytes=b"\0" * size)
-        self.out.seek(0)
-
-    def __bytes__(self) -> bytes:
-        return self.out.getvalue()
-    
-    def __exit__(self, *args) -> None:
-        self.out.close()
-
-    def _write_varint_unsigned(self, value: int) -> None:
-        while value >= 128:
-            self.out.write(((value & 0x7F) | 0x80).to_bytes(1, "little"))
-            value >>= 7
-        self.out.write(value.to_bytes(1, "little"))
+        with BytesIO(initial_bytes=b"\0" * self._get_size()) as stream:
+            self.write_to(stream)
+            return stream.getvalue()

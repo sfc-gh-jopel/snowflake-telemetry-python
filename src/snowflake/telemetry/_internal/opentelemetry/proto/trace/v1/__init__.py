@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import struct
+from io import BytesIO
 from typing import (
     List,
     Optional,
@@ -14,9 +15,9 @@ from snowflake.telemetry._internal.opentelemetry.proto.resource.v1 import *
 from snowflake.telemetry._internal.serialize import (
     Enum,
     MessageMarshaler,
-    ProtoSerializer,
     size_varint32,
     size_varint64,
+    write_varint_unsigned,
 )
 
 
@@ -43,12 +44,12 @@ class TracesData(MessageMarshaler):
             )
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.resource_spans:
             for v in self.resource_spans:
-                proto_serializer.out.write(b"\n")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"\n")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
 
 
 class ResourceSpans(MessageMarshaler):
@@ -81,21 +82,21 @@ class ResourceSpans(MessageMarshaler):
             size += len(b"\x1a") + size_varint32(len(v)) + len(v)
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.resource is not None:
-            proto_serializer.out.write(b"\n")
-            proto_serializer._write_varint_unsigned(self.resource._get_size())
-            self.resource.write_to(proto_serializer)
+            out.write(b"\n")
+            write_varint_unsigned(out, self.resource._get_size())
+            self.resource.write_to(out)
         if self.scope_spans:
             for v in self.scope_spans:
-                proto_serializer.out.write(b"\x12")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"\x12")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
         if self.schema_url:
             v = self._schema_url_encoded
-            proto_serializer.out.write(b"\x1a")
-            proto_serializer._write_varint_unsigned(len(v))
-            proto_serializer.out.write(v)
+            out.write(b"\x1a")
+            write_varint_unsigned(out, len(v))
+            out.write(v)
 
 
 class ScopeSpans(MessageMarshaler):
@@ -128,21 +129,21 @@ class ScopeSpans(MessageMarshaler):
             size += len(b"\x1a") + size_varint32(len(v)) + len(v)
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.scope is not None:
-            proto_serializer.out.write(b"\n")
-            proto_serializer._write_varint_unsigned(self.scope._get_size())
-            self.scope.write_to(proto_serializer)
+            out.write(b"\n")
+            write_varint_unsigned(out, self.scope._get_size())
+            self.scope.write_to(out)
         if self.spans:
             for v in self.spans:
-                proto_serializer.out.write(b"\x12")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"\x12")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
         if self.schema_url:
             v = self._schema_url_encoded
-            proto_serializer.out.write(b"\x1a")
-            proto_serializer._write_varint_unsigned(len(v))
-            proto_serializer.out.write(v)
+            out.write(b"\x1a")
+            write_varint_unsigned(out, len(v))
+            out.write(v)
 
 
 class Span(MessageMarshaler):
@@ -242,72 +243,72 @@ class Span(MessageMarshaler):
             size += len(b"\x85\x01") + 4
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.trace_id:
-            proto_serializer.out.write(b"\n")
-            proto_serializer._write_varint_unsigned(len(self.trace_id))
-            proto_serializer.out.write(self.trace_id)
+            out.write(b"\n")
+            write_varint_unsigned(out, len(self.trace_id))
+            out.write(self.trace_id)
         if self.span_id:
-            proto_serializer.out.write(b"\x12")
-            proto_serializer._write_varint_unsigned(len(self.span_id))
-            proto_serializer.out.write(self.span_id)
+            out.write(b"\x12")
+            write_varint_unsigned(out, len(self.span_id))
+            out.write(self.span_id)
         if self.trace_state:
             v = self._trace_state_encoded
-            proto_serializer.out.write(b"\x1a")
-            proto_serializer._write_varint_unsigned(len(v))
-            proto_serializer.out.write(v)
+            out.write(b"\x1a")
+            write_varint_unsigned(out, len(v))
+            out.write(v)
         if self.parent_span_id:
-            proto_serializer.out.write(b'"')
-            proto_serializer._write_varint_unsigned(len(self.parent_span_id))
-            proto_serializer.out.write(self.parent_span_id)
+            out.write(b'"')
+            write_varint_unsigned(out, len(self.parent_span_id))
+            out.write(self.parent_span_id)
         if self.name:
             v = self._name_encoded
-            proto_serializer.out.write(b"*")
-            proto_serializer._write_varint_unsigned(len(v))
-            proto_serializer.out.write(v)
+            out.write(b"*")
+            write_varint_unsigned(out, len(v))
+            out.write(v)
         if self.kind:
             v = self.kind
             if not isinstance(v, int):
                 v = v.self.kind
-            proto_serializer.out.write(b"0")
-            proto_serializer._write_varint_unsigned(v)
+            out.write(b"0")
+            write_varint_unsigned(out, v)
         if self.start_time_unix_nano:
-            proto_serializer.out.write(b"9")
-            proto_serializer.out.write(struct.pack("<Q", self.start_time_unix_nano))
+            out.write(b"9")
+            out.write(struct.pack("<Q", self.start_time_unix_nano))
         if self.end_time_unix_nano:
-            proto_serializer.out.write(b"A")
-            proto_serializer.out.write(struct.pack("<Q", self.end_time_unix_nano))
+            out.write(b"A")
+            out.write(struct.pack("<Q", self.end_time_unix_nano))
         if self.attributes:
             for v in self.attributes:
-                proto_serializer.out.write(b"J")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"J")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
         if self.dropped_attributes_count:
-            proto_serializer.out.write(b"P")
-            proto_serializer._write_varint_unsigned(self.dropped_attributes_count)
+            out.write(b"P")
+            write_varint_unsigned(out, self.dropped_attributes_count)
         if self.events:
             for v in self.events:
-                proto_serializer.out.write(b"Z")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"Z")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
         if self.dropped_events_count:
-            proto_serializer.out.write(b"`")
-            proto_serializer._write_varint_unsigned(self.dropped_events_count)
+            out.write(b"`")
+            write_varint_unsigned(out, self.dropped_events_count)
         if self.links:
             for v in self.links:
-                proto_serializer.out.write(b"j")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"j")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
         if self.dropped_links_count:
-            proto_serializer.out.write(b"p")
-            proto_serializer._write_varint_unsigned(self.dropped_links_count)
+            out.write(b"p")
+            write_varint_unsigned(out, self.dropped_links_count)
         if self.status is not None:
-            proto_serializer.out.write(b"z")
-            proto_serializer._write_varint_unsigned(self.status._get_size())
-            self.status.write_to(proto_serializer)
+            out.write(b"z")
+            write_varint_unsigned(out, self.status._get_size())
+            self.status.write_to(out)
         if self.flags:
-            proto_serializer.out.write(b"\x85\x01")
-            proto_serializer.out.write(struct.pack("<I", self.flags))
+            out.write(b"\x85\x01")
+            out.write(struct.pack("<I", self.flags))
 
     class SpanKind(Enum):
         SPAN_KIND_UNSPECIFIED = 0
@@ -349,23 +350,23 @@ class Span(MessageMarshaler):
                 size += len(b" ") + size_varint32(self.dropped_attributes_count)
             return size
 
-        def write_to(self, proto_serializer: ProtoSerializer) -> None:
+        def write_to(self, out: BytesIO) -> None:
             if self.time_unix_nano:
-                proto_serializer.out.write(b"\t")
-                proto_serializer.out.write(struct.pack("<Q", self.time_unix_nano))
+                out.write(b"\t")
+                out.write(struct.pack("<Q", self.time_unix_nano))
             if self.name:
                 v = self._name_encoded
-                proto_serializer.out.write(b"\x12")
-                proto_serializer._write_varint_unsigned(len(v))
-                proto_serializer.out.write(v)
+                out.write(b"\x12")
+                write_varint_unsigned(out, len(v))
+                out.write(v)
             if self.attributes:
                 for v in self.attributes:
-                    proto_serializer.out.write(b"\x1a")
-                    proto_serializer._write_varint_unsigned(v._get_size())
-                    v.write_to(proto_serializer)
+                    out.write(b"\x1a")
+                    write_varint_unsigned(out, v._get_size())
+                    v.write_to(out)
             if self.dropped_attributes_count:
-                proto_serializer.out.write(b" ")
-                proto_serializer._write_varint_unsigned(self.dropped_attributes_count)
+                out.write(b" ")
+                write_varint_unsigned(out, self.dropped_attributes_count)
 
     class Link(MessageMarshaler):
         def __init__(
@@ -409,31 +410,31 @@ class Span(MessageMarshaler):
                 size += len(b"5") + 4
             return size
 
-        def write_to(self, proto_serializer: ProtoSerializer) -> None:
+        def write_to(self, out: BytesIO) -> None:
             if self.trace_id:
-                proto_serializer.out.write(b"\n")
-                proto_serializer._write_varint_unsigned(len(self.trace_id))
-                proto_serializer.out.write(self.trace_id)
+                out.write(b"\n")
+                write_varint_unsigned(out, len(self.trace_id))
+                out.write(self.trace_id)
             if self.span_id:
-                proto_serializer.out.write(b"\x12")
-                proto_serializer._write_varint_unsigned(len(self.span_id))
-                proto_serializer.out.write(self.span_id)
+                out.write(b"\x12")
+                write_varint_unsigned(out, len(self.span_id))
+                out.write(self.span_id)
             if self.trace_state:
                 v = self._trace_state_encoded
-                proto_serializer.out.write(b"\x1a")
-                proto_serializer._write_varint_unsigned(len(v))
-                proto_serializer.out.write(v)
+                out.write(b"\x1a")
+                write_varint_unsigned(out, len(v))
+                out.write(v)
             if self.attributes:
                 for v in self.attributes:
-                    proto_serializer.out.write(b'"')
-                    proto_serializer._write_varint_unsigned(v._get_size())
-                    v.write_to(proto_serializer)
+                    out.write(b'"')
+                    write_varint_unsigned(out, v._get_size())
+                    v.write_to(out)
             if self.dropped_attributes_count:
-                proto_serializer.out.write(b"(")
-                proto_serializer._write_varint_unsigned(self.dropped_attributes_count)
+                out.write(b"(")
+                write_varint_unsigned(out, self.dropped_attributes_count)
             if self.flags:
-                proto_serializer.out.write(b"5")
-                proto_serializer.out.write(struct.pack("<I", self.flags))
+                out.write(b"5")
+                out.write(struct.pack("<I", self.flags))
 
 
 class Status(MessageMarshaler):
@@ -458,18 +459,18 @@ class Status(MessageMarshaler):
             size += len(b"\x18") + size_varint32(v)
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.message:
             v = self._message_encoded
-            proto_serializer.out.write(b"\x12")
-            proto_serializer._write_varint_unsigned(len(v))
-            proto_serializer.out.write(v)
+            out.write(b"\x12")
+            write_varint_unsigned(out, len(v))
+            out.write(v)
         if self.code:
             v = self.code
             if not isinstance(v, int):
                 v = v.self.code
-            proto_serializer.out.write(b"\x18")
-            proto_serializer._write_varint_unsigned(v)
+            out.write(b"\x18")
+            write_varint_unsigned(out, v)
 
     class StatusCode(Enum):
         STATUS_CODE_UNSET = 0

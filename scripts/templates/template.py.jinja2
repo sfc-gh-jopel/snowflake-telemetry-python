@@ -4,12 +4,13 @@
 from __future__ import annotations
 
 import struct
+from io import BytesIO
 from snowflake.telemetry._internal.serialize import (
     Enum,
-    ProtoSerializer,
     MessageMarshaler,
     size_varint32,
     size_varint64,
+    write_varint_unsigned,
 )
 from typing import List, Optional
     
@@ -43,7 +44,7 @@ class {{ message.name }}(MessageMarshaler):
 {%- endfor %}
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
 {%- for field in message.fields %}
         {{ field.serialize_field_inline | indent(8) }}
 {%- endfor %}

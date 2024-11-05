@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import struct
+from io import BytesIO
 from typing import (
     List,
     Optional,
@@ -13,9 +14,9 @@ from snowflake.telemetry._internal.opentelemetry.proto.trace.v1 import *
 from snowflake.telemetry._internal.serialize import (
     Enum,
     MessageMarshaler,
-    ProtoSerializer,
     size_varint32,
     size_varint64,
+    write_varint_unsigned,
 )
 
 
@@ -35,12 +36,12 @@ class ExportTraceServiceRequest(MessageMarshaler):
             )
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.resource_spans:
             for v in self.resource_spans:
-                proto_serializer.out.write(b"\n")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"\n")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
 
 
 class ExportTraceServiceResponse(MessageMarshaler):
@@ -60,11 +61,11 @@ class ExportTraceServiceResponse(MessageMarshaler):
             )
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.partial_success is not None:
-            proto_serializer.out.write(b"\n")
-            proto_serializer._write_varint_unsigned(self.partial_success._get_size())
-            self.partial_success.write_to(proto_serializer)
+            out.write(b"\n")
+            write_varint_unsigned(out, self.partial_success._get_size())
+            self.partial_success.write_to(out)
 
 
 class ExportTracePartialSuccess(MessageMarshaler):
@@ -90,16 +91,19 @@ class ExportTracePartialSuccess(MessageMarshaler):
             size += len(b"\x12") + size_varint32(len(v)) + len(v)
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.rejected_spans:
-            proto_serializer.out.write(b"\x08")
-            proto_serializer._write_varint_unsigned(
-                self.rejected_spans + (1 << 64)
-                if self.rejected_spans < 0
-                else self.rejected_spans
+            out.write(b"\x08")
+            write_varint_unsigned(
+                out,
+                (
+                    self.rejected_spans + (1 << 64)
+                    if self.rejected_spans < 0
+                    else self.rejected_spans
+                ),
             )
         if self.error_message:
             v = self._error_message_encoded
-            proto_serializer.out.write(b"\x12")
-            proto_serializer._write_varint_unsigned(len(v))
-            proto_serializer.out.write(v)
+            out.write(b"\x12")
+            write_varint_unsigned(out, len(v))
+            out.write(v)

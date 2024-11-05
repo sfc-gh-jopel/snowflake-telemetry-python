@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import struct
+from io import BytesIO
 from typing import (
     List,
     Optional,
@@ -14,9 +15,9 @@ from snowflake.telemetry._internal.opentelemetry.proto.resource.v1 import *
 from snowflake.telemetry._internal.serialize import (
     Enum,
     MessageMarshaler,
-    ProtoSerializer,
     size_varint32,
     size_varint64,
+    write_varint_unsigned,
 )
 
 
@@ -47,12 +48,12 @@ class MetricsData(MessageMarshaler):
             )
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.resource_metrics:
             for v in self.resource_metrics:
-                proto_serializer.out.write(b"\n")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"\n")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
 
 
 class ResourceMetrics(MessageMarshaler):
@@ -85,21 +86,21 @@ class ResourceMetrics(MessageMarshaler):
             size += len(b"\x1a") + size_varint32(len(v)) + len(v)
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.resource is not None:
-            proto_serializer.out.write(b"\n")
-            proto_serializer._write_varint_unsigned(self.resource._get_size())
-            self.resource.write_to(proto_serializer)
+            out.write(b"\n")
+            write_varint_unsigned(out, self.resource._get_size())
+            self.resource.write_to(out)
         if self.scope_metrics:
             for v in self.scope_metrics:
-                proto_serializer.out.write(b"\x12")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"\x12")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
         if self.schema_url:
             v = self._schema_url_encoded
-            proto_serializer.out.write(b"\x1a")
-            proto_serializer._write_varint_unsigned(len(v))
-            proto_serializer.out.write(v)
+            out.write(b"\x1a")
+            write_varint_unsigned(out, len(v))
+            out.write(v)
 
 
 class ScopeMetrics(MessageMarshaler):
@@ -132,21 +133,21 @@ class ScopeMetrics(MessageMarshaler):
             size += len(b"\x1a") + size_varint32(len(v)) + len(v)
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.scope is not None:
-            proto_serializer.out.write(b"\n")
-            proto_serializer._write_varint_unsigned(self.scope._get_size())
-            self.scope.write_to(proto_serializer)
+            out.write(b"\n")
+            write_varint_unsigned(out, self.scope._get_size())
+            self.scope.write_to(out)
         if self.metrics:
             for v in self.metrics:
-                proto_serializer.out.write(b"\x12")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"\x12")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
         if self.schema_url:
             v = self._schema_url_encoded
-            proto_serializer.out.write(b"\x1a")
-            proto_serializer._write_varint_unsigned(len(v))
-            proto_serializer.out.write(v)
+            out.write(b"\x1a")
+            write_varint_unsigned(out, len(v))
+            out.write(v)
 
 
 class Metric(MessageMarshaler):
@@ -221,49 +222,47 @@ class Metric(MessageMarshaler):
             )
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.name:
             v = self._name_encoded
-            proto_serializer.out.write(b"\n")
-            proto_serializer._write_varint_unsigned(len(v))
-            proto_serializer.out.write(v)
+            out.write(b"\n")
+            write_varint_unsigned(out, len(v))
+            out.write(v)
         if self.description:
             v = self._description_encoded
-            proto_serializer.out.write(b"\x12")
-            proto_serializer._write_varint_unsigned(len(v))
-            proto_serializer.out.write(v)
+            out.write(b"\x12")
+            write_varint_unsigned(out, len(v))
+            out.write(v)
         if self.unit:
             v = self._unit_encoded
-            proto_serializer.out.write(b"\x1a")
-            proto_serializer._write_varint_unsigned(len(v))
-            proto_serializer.out.write(v)
+            out.write(b"\x1a")
+            write_varint_unsigned(out, len(v))
+            out.write(v)
         if self.gauge is not None:
-            proto_serializer.out.write(b"*")
-            proto_serializer._write_varint_unsigned(self.gauge._get_size())
-            self.gauge.write_to(proto_serializer)
+            out.write(b"*")
+            write_varint_unsigned(out, self.gauge._get_size())
+            self.gauge.write_to(out)
         if self.sum is not None:
-            proto_serializer.out.write(b":")
-            proto_serializer._write_varint_unsigned(self.sum._get_size())
-            self.sum.write_to(proto_serializer)
+            out.write(b":")
+            write_varint_unsigned(out, self.sum._get_size())
+            self.sum.write_to(out)
         if self.histogram is not None:
-            proto_serializer.out.write(b"J")
-            proto_serializer._write_varint_unsigned(self.histogram._get_size())
-            self.histogram.write_to(proto_serializer)
+            out.write(b"J")
+            write_varint_unsigned(out, self.histogram._get_size())
+            self.histogram.write_to(out)
         if self.exponential_histogram is not None:
-            proto_serializer.out.write(b"R")
-            proto_serializer._write_varint_unsigned(
-                self.exponential_histogram._get_size()
-            )
-            self.exponential_histogram.write_to(proto_serializer)
+            out.write(b"R")
+            write_varint_unsigned(out, self.exponential_histogram._get_size())
+            self.exponential_histogram.write_to(out)
         if self.summary is not None:
-            proto_serializer.out.write(b"Z")
-            proto_serializer._write_varint_unsigned(self.summary._get_size())
-            self.summary.write_to(proto_serializer)
+            out.write(b"Z")
+            write_varint_unsigned(out, self.summary._get_size())
+            self.summary.write_to(out)
         if self.metadata:
             for v in self.metadata:
-                proto_serializer.out.write(b"b")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"b")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
 
 
 class Gauge(MessageMarshaler):
@@ -282,12 +281,12 @@ class Gauge(MessageMarshaler):
             )
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.data_points:
             for v in self.data_points:
-                proto_serializer.out.write(b"\n")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"\n")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
 
 
 class Sum(MessageMarshaler):
@@ -317,21 +316,21 @@ class Sum(MessageMarshaler):
             size += len(b"\x18") + 1
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.data_points:
             for v in self.data_points:
-                proto_serializer.out.write(b"\n")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"\n")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
         if self.aggregation_temporality:
             v = self.aggregation_temporality
             if not isinstance(v, int):
                 v = v.self.aggregation_temporality
-            proto_serializer.out.write(b"\x10")
-            proto_serializer._write_varint_unsigned(v)
+            out.write(b"\x10")
+            write_varint_unsigned(out, v)
         if self.is_monotonic:
-            proto_serializer.out.write(b"\x18")
-            proto_serializer._write_varint_unsigned(1 if self.is_monotonic else 0)
+            out.write(b"\x18")
+            write_varint_unsigned(out, 1 if self.is_monotonic else 0)
 
 
 class Histogram(MessageMarshaler):
@@ -357,18 +356,18 @@ class Histogram(MessageMarshaler):
             size += len(b"\x10") + size_varint32(v)
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.data_points:
             for v in self.data_points:
-                proto_serializer.out.write(b"\n")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"\n")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
         if self.aggregation_temporality:
             v = self.aggregation_temporality
             if not isinstance(v, int):
                 v = v.self.aggregation_temporality
-            proto_serializer.out.write(b"\x10")
-            proto_serializer._write_varint_unsigned(v)
+            out.write(b"\x10")
+            write_varint_unsigned(out, v)
 
 
 class ExponentialHistogram(MessageMarshaler):
@@ -394,18 +393,18 @@ class ExponentialHistogram(MessageMarshaler):
             size += len(b"\x10") + size_varint32(v)
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.data_points:
             for v in self.data_points:
-                proto_serializer.out.write(b"\n")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"\n")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
         if self.aggregation_temporality:
             v = self.aggregation_temporality
             if not isinstance(v, int):
                 v = v.self.aggregation_temporality
-            proto_serializer.out.write(b"\x10")
-            proto_serializer._write_varint_unsigned(v)
+            out.write(b"\x10")
+            write_varint_unsigned(out, v)
 
 
 class Summary(MessageMarshaler):
@@ -424,12 +423,12 @@ class Summary(MessageMarshaler):
             )
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.data_points:
             for v in self.data_points:
-                proto_serializer.out.write(b"\n")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"\n")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
 
 
 class NumberDataPoint(MessageMarshaler):
@@ -475,32 +474,32 @@ class NumberDataPoint(MessageMarshaler):
             size += len(b"@") + size_varint32(self.flags)
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.start_time_unix_nano:
-            proto_serializer.out.write(b"\x11")
-            proto_serializer.out.write(struct.pack("<Q", self.start_time_unix_nano))
+            out.write(b"\x11")
+            out.write(struct.pack("<Q", self.start_time_unix_nano))
         if self.time_unix_nano:
-            proto_serializer.out.write(b"\x19")
-            proto_serializer.out.write(struct.pack("<Q", self.time_unix_nano))
+            out.write(b"\x19")
+            out.write(struct.pack("<Q", self.time_unix_nano))
         if self.as_double is not None:
-            proto_serializer.out.write(b"!")
-            proto_serializer.out.write(struct.pack("<d", self.as_double))
+            out.write(b"!")
+            out.write(struct.pack("<d", self.as_double))
         if self.exemplars:
             for v in self.exemplars:
-                proto_serializer.out.write(b"*")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"*")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
         if self.as_int is not None:
-            proto_serializer.out.write(b"1")
-            proto_serializer.out.write(struct.pack("<q", self.as_int))
+            out.write(b"1")
+            out.write(struct.pack("<q", self.as_int))
         if self.attributes:
             for v in self.attributes:
-                proto_serializer.out.write(b":")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b":")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
         if self.flags:
-            proto_serializer.out.write(b"@")
-            proto_serializer._write_varint_unsigned(self.flags)
+            out.write(b"@")
+            write_varint_unsigned(out, self.flags)
 
 
 class HistogramDataPoint(MessageMarshaler):
@@ -570,48 +569,48 @@ class HistogramDataPoint(MessageMarshaler):
             size += len(b"a") + 8
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.start_time_unix_nano:
-            proto_serializer.out.write(b"\x11")
-            proto_serializer.out.write(struct.pack("<Q", self.start_time_unix_nano))
+            out.write(b"\x11")
+            out.write(struct.pack("<Q", self.start_time_unix_nano))
         if self.time_unix_nano:
-            proto_serializer.out.write(b"\x19")
-            proto_serializer.out.write(struct.pack("<Q", self.time_unix_nano))
+            out.write(b"\x19")
+            out.write(struct.pack("<Q", self.time_unix_nano))
         if self.count:
-            proto_serializer.out.write(b"!")
-            proto_serializer.out.write(struct.pack("<Q", self.count))
+            out.write(b"!")
+            out.write(struct.pack("<Q", self.count))
         if self.sum is not None:
-            proto_serializer.out.write(b")")
-            proto_serializer.out.write(struct.pack("<d", self.sum))
+            out.write(b")")
+            out.write(struct.pack("<d", self.sum))
         if self.bucket_counts:
-            proto_serializer.out.write(b"2")
-            proto_serializer._write_varint_unsigned(len(self.bucket_counts) * 8)
+            out.write(b"2")
+            write_varint_unsigned(out, len(self.bucket_counts) * 8)
             for v in self.bucket_counts:
-                proto_serializer.out.write(struct.pack("<Q", v))
+                out.write(struct.pack("<Q", v))
         if self.explicit_bounds:
-            proto_serializer.out.write(b":")
-            proto_serializer._write_varint_unsigned(len(self.explicit_bounds) * 8)
+            out.write(b":")
+            write_varint_unsigned(out, len(self.explicit_bounds) * 8)
             for v in self.explicit_bounds:
-                proto_serializer.out.write(struct.pack("<d", v))
+                out.write(struct.pack("<d", v))
         if self.exemplars:
             for v in self.exemplars:
-                proto_serializer.out.write(b"B")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"B")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
         if self.attributes:
             for v in self.attributes:
-                proto_serializer.out.write(b"J")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"J")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
         if self.flags:
-            proto_serializer.out.write(b"P")
-            proto_serializer._write_varint_unsigned(self.flags)
+            out.write(b"P")
+            write_varint_unsigned(out, self.flags)
         if self.min is not None:
-            proto_serializer.out.write(b"Y")
-            proto_serializer.out.write(struct.pack("<d", self.min))
+            out.write(b"Y")
+            out.write(struct.pack("<d", self.min))
         if self.max is not None:
-            proto_serializer.out.write(b"a")
-            proto_serializer.out.write(struct.pack("<d", self.max))
+            out.write(b"a")
+            out.write(struct.pack("<d", self.max))
 
 
 class ExponentialHistogramDataPoint(MessageMarshaler):
@@ -695,57 +694,57 @@ class ExponentialHistogramDataPoint(MessageMarshaler):
             size += len(b"q") + 8
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.attributes:
             for v in self.attributes:
-                proto_serializer.out.write(b"\n")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"\n")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
         if self.start_time_unix_nano:
-            proto_serializer.out.write(b"\x11")
-            proto_serializer.out.write(struct.pack("<Q", self.start_time_unix_nano))
+            out.write(b"\x11")
+            out.write(struct.pack("<Q", self.start_time_unix_nano))
         if self.time_unix_nano:
-            proto_serializer.out.write(b"\x19")
-            proto_serializer.out.write(struct.pack("<Q", self.time_unix_nano))
+            out.write(b"\x19")
+            out.write(struct.pack("<Q", self.time_unix_nano))
         if self.count:
-            proto_serializer.out.write(b"!")
-            proto_serializer.out.write(struct.pack("<Q", self.count))
+            out.write(b"!")
+            out.write(struct.pack("<Q", self.count))
         if self.sum is not None:
-            proto_serializer.out.write(b")")
-            proto_serializer.out.write(struct.pack("<d", self.sum))
+            out.write(b")")
+            out.write(struct.pack("<d", self.sum))
         if self.scale:
-            proto_serializer.out.write(b"0")
-            proto_serializer._write_varint_unsigned(
-                self.scale << 1 if self.scale >= 0 else (self.scale << 1) ^ (~0)
+            out.write(b"0")
+            write_varint_unsigned(
+                out, self.scale << 1 if self.scale >= 0 else (self.scale << 1) ^ (~0)
             )
         if self.zero_count:
-            proto_serializer.out.write(b"9")
-            proto_serializer.out.write(struct.pack("<Q", self.zero_count))
+            out.write(b"9")
+            out.write(struct.pack("<Q", self.zero_count))
         if self.positive is not None:
-            proto_serializer.out.write(b"B")
-            proto_serializer._write_varint_unsigned(self.positive._get_size())
-            self.positive.write_to(proto_serializer)
+            out.write(b"B")
+            write_varint_unsigned(out, self.positive._get_size())
+            self.positive.write_to(out)
         if self.negative is not None:
-            proto_serializer.out.write(b"J")
-            proto_serializer._write_varint_unsigned(self.negative._get_size())
-            self.negative.write_to(proto_serializer)
+            out.write(b"J")
+            write_varint_unsigned(out, self.negative._get_size())
+            self.negative.write_to(out)
         if self.flags:
-            proto_serializer.out.write(b"P")
-            proto_serializer._write_varint_unsigned(self.flags)
+            out.write(b"P")
+            write_varint_unsigned(out, self.flags)
         if self.exemplars:
             for v in self.exemplars:
-                proto_serializer.out.write(b"Z")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"Z")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
         if self.min is not None:
-            proto_serializer.out.write(b"a")
-            proto_serializer.out.write(struct.pack("<d", self.min))
+            out.write(b"a")
+            out.write(struct.pack("<d", self.min))
         if self.max is not None:
-            proto_serializer.out.write(b"i")
-            proto_serializer.out.write(struct.pack("<d", self.max))
+            out.write(b"i")
+            out.write(struct.pack("<d", self.max))
         if self.zero_threshold:
-            proto_serializer.out.write(b"q")
-            proto_serializer.out.write(struct.pack("<d", self.zero_threshold))
+            out.write(b"q")
+            out.write(struct.pack("<d", self.zero_threshold))
 
     class Buckets(MessageMarshaler):
         def __init__(
@@ -768,17 +767,18 @@ class ExponentialHistogramDataPoint(MessageMarshaler):
                 size += len(b"\x12") + s + size_varint32(s)
             return size
 
-        def write_to(self, proto_serializer: ProtoSerializer) -> None:
+        def write_to(self, out: BytesIO) -> None:
             if self.offset:
-                proto_serializer.out.write(b"\x08")
-                proto_serializer._write_varint_unsigned(
-                    self.offset << 1 if self.offset >= 0 else (self.offset << 1) ^ (~0)
+                out.write(b"\x08")
+                write_varint_unsigned(
+                    out,
+                    self.offset << 1 if self.offset >= 0 else (self.offset << 1) ^ (~0),
                 )
             if self.bucket_counts:
-                proto_serializer.out.write(b"\x12")
-                proto_serializer._write_varint_unsigned(self._bucket_counts_size)
+                out.write(b"\x12")
+                write_varint_unsigned(out, self._bucket_counts_size)
                 for v in self.bucket_counts:
-                    proto_serializer._write_varint_unsigned(v)
+                    write_varint_unsigned(out, v)
 
 
 class SummaryDataPoint(MessageMarshaler):
@@ -824,32 +824,32 @@ class SummaryDataPoint(MessageMarshaler):
             size += len(b"@") + size_varint32(self.flags)
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.start_time_unix_nano:
-            proto_serializer.out.write(b"\x11")
-            proto_serializer.out.write(struct.pack("<Q", self.start_time_unix_nano))
+            out.write(b"\x11")
+            out.write(struct.pack("<Q", self.start_time_unix_nano))
         if self.time_unix_nano:
-            proto_serializer.out.write(b"\x19")
-            proto_serializer.out.write(struct.pack("<Q", self.time_unix_nano))
+            out.write(b"\x19")
+            out.write(struct.pack("<Q", self.time_unix_nano))
         if self.count:
-            proto_serializer.out.write(b"!")
-            proto_serializer.out.write(struct.pack("<Q", self.count))
+            out.write(b"!")
+            out.write(struct.pack("<Q", self.count))
         if self.sum:
-            proto_serializer.out.write(b")")
-            proto_serializer.out.write(struct.pack("<d", self.sum))
+            out.write(b")")
+            out.write(struct.pack("<d", self.sum))
         if self.quantile_values:
             for v in self.quantile_values:
-                proto_serializer.out.write(b"2")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b"2")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
         if self.attributes:
             for v in self.attributes:
-                proto_serializer.out.write(b":")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b":")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)
         if self.flags:
-            proto_serializer.out.write(b"@")
-            proto_serializer._write_varint_unsigned(self.flags)
+            out.write(b"@")
+            write_varint_unsigned(out, self.flags)
 
     class ValueAtQuantile(MessageMarshaler):
         def __init__(
@@ -868,13 +868,13 @@ class SummaryDataPoint(MessageMarshaler):
                 size += len(b"\x11") + 8
             return size
 
-        def write_to(self, proto_serializer: ProtoSerializer) -> None:
+        def write_to(self, out: BytesIO) -> None:
             if self.quantile:
-                proto_serializer.out.write(b"\t")
-                proto_serializer.out.write(struct.pack("<d", self.quantile))
+                out.write(b"\t")
+                out.write(struct.pack("<d", self.quantile))
             if self.value:
-                proto_serializer.out.write(b"\x11")
-                proto_serializer.out.write(struct.pack("<d", self.value))
+                out.write(b"\x11")
+                out.write(struct.pack("<d", self.value))
 
 
 class Exemplar(MessageMarshaler):
@@ -913,26 +913,26 @@ class Exemplar(MessageMarshaler):
             )
         return size
 
-    def write_to(self, proto_serializer: ProtoSerializer) -> None:
+    def write_to(self, out: BytesIO) -> None:
         if self.time_unix_nano:
-            proto_serializer.out.write(b"\x11")
-            proto_serializer.out.write(struct.pack("<Q", self.time_unix_nano))
+            out.write(b"\x11")
+            out.write(struct.pack("<Q", self.time_unix_nano))
         if self.as_double is not None:
-            proto_serializer.out.write(b"\x19")
-            proto_serializer.out.write(struct.pack("<d", self.as_double))
+            out.write(b"\x19")
+            out.write(struct.pack("<d", self.as_double))
         if self.span_id:
-            proto_serializer.out.write(b'"')
-            proto_serializer._write_varint_unsigned(len(self.span_id))
-            proto_serializer.out.write(self.span_id)
+            out.write(b'"')
+            write_varint_unsigned(out, len(self.span_id))
+            out.write(self.span_id)
         if self.trace_id:
-            proto_serializer.out.write(b"*")
-            proto_serializer._write_varint_unsigned(len(self.trace_id))
-            proto_serializer.out.write(self.trace_id)
+            out.write(b"*")
+            write_varint_unsigned(out, len(self.trace_id))
+            out.write(self.trace_id)
         if self.as_int is not None:
-            proto_serializer.out.write(b"1")
-            proto_serializer.out.write(struct.pack("<q", self.as_int))
+            out.write(b"1")
+            out.write(struct.pack("<q", self.as_int))
         if self.filtered_attributes:
             for v in self.filtered_attributes:
-                proto_serializer.out.write(b":")
-                proto_serializer._write_varint_unsigned(v._get_size())
-                v.write_to(proto_serializer)
+                out.write(b":")
+                write_varint_unsigned(out, v._get_size())
+                v.write_to(out)

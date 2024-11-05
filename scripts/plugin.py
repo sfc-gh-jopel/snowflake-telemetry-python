@@ -5,6 +5,7 @@ import os
 import sys
 import struct
 import inspect
+from io import BytesIO
 from enum import IntEnum
 from typing import List, Optional, Union
 from textwrap import dedent, indent
@@ -12,9 +13,9 @@ from dataclasses import dataclass, field
 from snowflake.telemetry._internal.serialize import (
     Enum,
     MessageMarshaler,
-    ProtoSerializer, 
     size_varint32,
     size_varint64,
+    write_varint_unsigned
 )
 
 from google.protobuf.compiler import plugin_pb2 as plugin
@@ -108,104 +109,104 @@ def size_repeated_uint64(tag: bytes, value: List[int]):
 # Serialization functions
 # 
 
-def serialize_bool(proto_serializer: ProtoSerializer, tag: bytes, value: bool) -> None:
-    proto_serializer.out.write(tag)
-    proto_serializer._write_varint_unsigned(1 if value else 0)
+def serialize_bool(out: BytesIO, tag: bytes, value: bool) -> None:
+    out.write(tag)
+    write_varint_unsigned(out, 1 if value else 0)
 
-def serialize_enum(proto_serializer: ProtoSerializer, tag: bytes, value: Union[Enum, int]) -> None:
+def serialize_enum(out: BytesIO, tag: bytes, value: Union[Enum, int]) -> None:
     v = value
     if not isinstance(v, int):
         v = v.value
-    proto_serializer.out.write(tag)
-    proto_serializer._write_varint_unsigned(v)
+    out.write(tag)
+    write_varint_unsigned(out, v)
 
-def serialize_uint32(proto_serializer: ProtoSerializer, tag: bytes, value: int) -> None:
-    proto_serializer.out.write(tag)
-    proto_serializer._write_varint_unsigned(value)
+def serialize_uint32(out: BytesIO, tag: bytes, value: int) -> None:
+    out.write(tag)
+    write_varint_unsigned(out, value)
 
-def serialize_uint64(proto_serializer: ProtoSerializer, tag: bytes, value: int) -> None:
-    proto_serializer.out.write(tag)
-    proto_serializer._write_varint_unsigned(value)
+def serialize_uint64(out: BytesIO, tag: bytes, value: int) -> None:
+    out.write(tag)
+    write_varint_unsigned(out, value)
 
-def serialize_sint32(proto_serializer: ProtoSerializer, tag: bytes, value: int) -> None:
-    proto_serializer.out.write(tag)
-    proto_serializer._write_varint_unsigned(value << 1 if value >= 0 else (value << 1) ^ (~0))
+def serialize_sint32(out: BytesIO, tag: bytes, value: int) -> None:
+    out.write(tag)
+    write_varint_unsigned(out, value << 1 if value >= 0 else (value << 1) ^ (~0))
 
-def serialize_sint64(proto_serializer: ProtoSerializer, tag: bytes, value: int) -> None:
-    proto_serializer.out.write(tag)
-    proto_serializer._write_varint_unsigned(value << 1 if value >= 0 else (value << 1) ^ (~0))
+def serialize_sint64(out: BytesIO, tag: bytes, value: int) -> None:
+    out.write(tag)
+    write_varint_unsigned(out, value << 1 if value >= 0 else (value << 1) ^ (~0))
 
-def serialize_int32(proto_serializer: ProtoSerializer, tag: bytes, value: int) -> None:
-    proto_serializer.out.write(tag)
-    proto_serializer._write_varint_unsigned(value + (1 << 32) if value < 0 else value)
+def serialize_int32(out: BytesIO, tag: bytes, value: int) -> None:
+    out.write(tag)
+    write_varint_unsigned(out, value + (1 << 32) if value < 0 else value)
 
-def serialize_int64(proto_serializer: ProtoSerializer, tag: bytes, value: int) -> None:
-    proto_serializer.out.write(tag)
-    proto_serializer._write_varint_unsigned(value + (1 << 64) if value < 0 else value)
+def serialize_int64(out: BytesIO, tag: bytes, value: int) -> None:
+    out.write(tag)
+    write_varint_unsigned(out, value + (1 << 64) if value < 0 else value)
 
-def serialize_fixed32(proto_serializer: ProtoSerializer, tag: bytes, value: int) -> None:
-    proto_serializer.out.write(tag)
-    proto_serializer.out.write(struct.pack("<I", value))
+def serialize_fixed32(out: BytesIO, tag: bytes, value: int) -> None:
+    out.write(tag)
+    out.write(struct.pack("<I", value))
 
-def serialize_fixed64(proto_serializer: ProtoSerializer, tag: bytes, value: int) -> None:
-    proto_serializer.out.write(tag)
-    proto_serializer.out.write(struct.pack("<Q", value))
+def serialize_fixed64(out: BytesIO, tag: bytes, value: int) -> None:
+    out.write(tag)
+    out.write(struct.pack("<Q", value))
 
-def serialize_sfixed32(proto_serializer: ProtoSerializer, tag: bytes, value: int) -> None:
-    proto_serializer.out.write(tag)
-    proto_serializer.out.write(struct.pack("<i", value))
+def serialize_sfixed32(out: BytesIO, tag: bytes, value: int) -> None:
+    out.write(tag)
+    out.write(struct.pack("<i", value))
 
-def serialize_sfixed64(proto_serializer: ProtoSerializer, tag: bytes, value: int) -> None:
-    proto_serializer.out.write(tag)
-    proto_serializer.out.write(struct.pack("<q", value))
+def serialize_sfixed64(out: BytesIO, tag: bytes, value: int) -> None:
+    out.write(tag)
+    out.write(struct.pack("<q", value))
 
-def serialize_float(proto_serializer: ProtoSerializer, tag: bytes, value: float) -> None:
-    proto_serializer.out.write(tag)
-    proto_serializer.out.write(struct.pack("<f", value))
+def serialize_float(out: BytesIO, tag: bytes, value: float) -> None:
+    out.write(tag)
+    out.write(struct.pack("<f", value))
 
-def serialize_double(proto_serializer: ProtoSerializer, tag: bytes, value: float) -> None:
-    proto_serializer.out.write(tag)
-    proto_serializer.out.write(struct.pack("<d", value))
+def serialize_double(out: BytesIO, tag: bytes, value: float) -> None:
+    out.write(tag)
+    out.write(struct.pack("<d", value))
 
-def serialize_bytes(proto_serializer: ProtoSerializer, tag: bytes, value: bytes) -> None:
-    proto_serializer.out.write(tag)
-    proto_serializer._write_varint_unsigned(len(value))
-    proto_serializer.out.write(value)
+def serialize_bytes(out: BytesIO, tag: bytes, value: bytes) -> None:
+    out.write(tag)
+    write_varint_unsigned(out, len(value))
+    out.write(value)
 
-def serialize_string(proto_serializer: ProtoSerializer, tag: bytes, value: str) -> None:
+def serialize_string(out: BytesIO, tag: bytes, value: str) -> None:
     v = self._fieldname_encoded
-    proto_serializer.out.write(tag)
-    proto_serializer._write_varint_unsigned(len(v))
-    proto_serializer.out.write(v)
+    out.write(tag)
+    write_varint_unsigned(out, len(v))
+    out.write(v)
 
-def serialize_message(proto_serializer: ProtoSerializer, tag: bytes, value: MessageMarshaler) -> None:
-    proto_serializer.out.write(tag)
-    proto_serializer._write_varint_unsigned(value._get_size())
-    value.write_to(proto_serializer)
+def serialize_message(out: BytesIO, tag: bytes, value: MessageMarshaler) -> None:
+    out.write(tag)
+    write_varint_unsigned(out, value._get_size())
+    value.write_to(out)
 
-def serialize_repeated_message(proto_serializer: ProtoSerializer, tag: bytes, value: List[MessageMarshaler]) -> None:
+def serialize_repeated_message(out: BytesIO, tag: bytes, value: List[MessageMarshaler]) -> None:
     for v in value:
-        proto_serializer.out.write(tag)
-        proto_serializer._write_varint_unsigned(v._get_size())
-        v.write_to(proto_serializer)
+        out.write(tag)
+        write_varint_unsigned(out, v._get_size())
+        v.write_to(out)
 
-def serialize_repeated_double(proto_serializer: ProtoSerializer, tag: bytes, value: List[float]) -> None:
-    proto_serializer.out.write(tag)
-    proto_serializer._write_varint_unsigned(len(value) * 8)
+def serialize_repeated_double(out: BytesIO, tag: bytes, value: List[float]) -> None:
+    out.write(tag)
+    write_varint_unsigned(out, len(value) * 8)
     for v in value:
-        proto_serializer.out.write(struct.pack("<d", v))
+        out.write(struct.pack("<d", v))
 
-def serialize_repeated_fixed64(proto_serializer: ProtoSerializer, tag: bytes, value: List[int]) -> None:
-    proto_serializer.out.write(tag)
-    proto_serializer._write_varint_unsigned(len(value) * 8)
+def serialize_repeated_fixed64(out: BytesIO, tag: bytes, value: List[int]) -> None:
+    out.write(tag)
+    write_varint_unsigned(out, len(value) * 8)
     for v in value:
-        proto_serializer.out.write(struct.pack("<Q", v))
+        out.write(struct.pack("<Q", v))
 
-def serialize_repeated_uint64(proto_serializer: ProtoSerializer, tag: bytes, value: List[int]) -> None:
-    proto_serializer.out.write(tag)
-    proto_serializer._write_varint_unsigned(self._fieldname_size)
+def serialize_repeated_uint64(out: BytesIO, tag: bytes, value: List[int]) -> None:
+    out.write(tag)
+    write_varint_unsigned(out, self._fieldname_size)
     for v in value:
-        proto_serializer._write_varint_unsigned(v)
+        write_varint_unsigned(out, v)
 
 # 
 # Inline utility functions
