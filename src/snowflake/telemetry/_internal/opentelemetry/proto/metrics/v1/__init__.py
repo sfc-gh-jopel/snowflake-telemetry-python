@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import struct
 from typing import (
     List,
     Optional,
@@ -14,7 +15,8 @@ from snowflake.telemetry._internal.serialize import (
     Enum,
     MessageMarshaler,
     ProtoSerializer,
-    util,
+    size_varint32,
+    size_varint64,
 )
 
 
@@ -35,17 +37,22 @@ class MetricsData(MessageMarshaler):
         resource_metrics: List[ResourceMetrics] = None,
     ):
         self.resource_metrics: List[ResourceMetrics] = resource_metrics
-        super().__init__()
 
     def calculate_size(self) -> int:
         size = 0
         if self.resource_metrics:
-            size += util.size_repeated_message(b"\n", self.resource_metrics)
+            size += sum(
+                message._get_size() + len(b"\n") + size_varint32(message._get_size())
+                for message in self.resource_metrics
+            )
         return size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.resource_metrics:
-            proto_serializer.serialize_repeated_message(b"\n", self.resource_metrics)
+            for v in self.resource_metrics:
+                proto_serializer.out.write(b"\n")
+                proto_serializer._write_varint_unsigned(v._get_size())
+                v.write_to(proto_serializer)
 
 
 class ResourceMetrics(MessageMarshaler):
@@ -58,25 +65,41 @@ class ResourceMetrics(MessageMarshaler):
         self.resource: Resource = resource
         self.scope_metrics: List[ScopeMetrics] = scope_metrics
         self.schema_url: str = schema_url
-        super().__init__()
 
     def calculate_size(self) -> int:
         size = 0
         if self.resource is not None:
-            size += util.size_message(b"\n", self.resource)
+            size += (
+                len(b"\n")
+                + size_varint32(self.resource._get_size())
+                + self.resource._get_size()
+            )
         if self.scope_metrics:
-            size += util.size_repeated_message(b"\x12", self.scope_metrics)
+            size += sum(
+                message._get_size() + len(b"\x12") + size_varint32(message._get_size())
+                for message in self.scope_metrics
+            )
         if self.schema_url:
-            size += util.size_string(b"\x1a", self.schema_url)
+            v = self.schema_url.encode("utf-8")
+            self._schema_url_encoded = v
+            size += len(b"\x1a") + size_varint32(len(v)) + len(v)
         return size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.resource is not None:
-            proto_serializer.serialize_message(b"\n", self.resource)
+            proto_serializer.out.write(b"\n")
+            proto_serializer._write_varint_unsigned(self.resource._get_size())
+            self.resource.write_to(proto_serializer)
         if self.scope_metrics:
-            proto_serializer.serialize_repeated_message(b"\x12", self.scope_metrics)
+            for v in self.scope_metrics:
+                proto_serializer.out.write(b"\x12")
+                proto_serializer._write_varint_unsigned(v._get_size())
+                v.write_to(proto_serializer)
         if self.schema_url:
-            proto_serializer.serialize_string(b"\x1a", self.schema_url)
+            v = self._schema_url_encoded
+            proto_serializer.out.write(b"\x1a")
+            proto_serializer._write_varint_unsigned(len(v))
+            proto_serializer.out.write(v)
 
 
 class ScopeMetrics(MessageMarshaler):
@@ -89,25 +112,41 @@ class ScopeMetrics(MessageMarshaler):
         self.scope: InstrumentationScope = scope
         self.metrics: List[Metric] = metrics
         self.schema_url: str = schema_url
-        super().__init__()
 
     def calculate_size(self) -> int:
         size = 0
         if self.scope is not None:
-            size += util.size_message(b"\n", self.scope)
+            size += (
+                len(b"\n")
+                + size_varint32(self.scope._get_size())
+                + self.scope._get_size()
+            )
         if self.metrics:
-            size += util.size_repeated_message(b"\x12", self.metrics)
+            size += sum(
+                message._get_size() + len(b"\x12") + size_varint32(message._get_size())
+                for message in self.metrics
+            )
         if self.schema_url:
-            size += util.size_string(b"\x1a", self.schema_url)
+            v = self.schema_url.encode("utf-8")
+            self._schema_url_encoded = v
+            size += len(b"\x1a") + size_varint32(len(v)) + len(v)
         return size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.scope is not None:
-            proto_serializer.serialize_message(b"\n", self.scope)
+            proto_serializer.out.write(b"\n")
+            proto_serializer._write_varint_unsigned(self.scope._get_size())
+            self.scope.write_to(proto_serializer)
         if self.metrics:
-            proto_serializer.serialize_repeated_message(b"\x12", self.metrics)
+            for v in self.metrics:
+                proto_serializer.out.write(b"\x12")
+                proto_serializer._write_varint_unsigned(v._get_size())
+                v.write_to(proto_serializer)
         if self.schema_url:
-            proto_serializer.serialize_string(b"\x1a", self.schema_url)
+            v = self._schema_url_encoded
+            proto_serializer.out.write(b"\x1a")
+            proto_serializer._write_varint_unsigned(len(v))
+            proto_serializer.out.write(v)
 
 
 class Metric(MessageMarshaler):
@@ -132,49 +171,99 @@ class Metric(MessageMarshaler):
         self.exponential_histogram: ExponentialHistogram = exponential_histogram
         self.summary: Summary = summary
         self.metadata: List[KeyValue] = metadata
-        super().__init__()
 
     def calculate_size(self) -> int:
         size = 0
         if self.name:
-            size += util.size_string(b"\n", self.name)
+            v = self.name.encode("utf-8")
+            self._name_encoded = v
+            size += len(b"\n") + size_varint32(len(v)) + len(v)
         if self.description:
-            size += util.size_string(b"\x12", self.description)
+            v = self.description.encode("utf-8")
+            self._description_encoded = v
+            size += len(b"\x12") + size_varint32(len(v)) + len(v)
         if self.unit:
-            size += util.size_string(b"\x1a", self.unit)
-        if self.gauge is not None:  # oneof group data
-            size += util.size_message(b"*", self.gauge)
-        if self.sum is not None:  # oneof group data
-            size += util.size_message(b":", self.sum)
-        if self.histogram is not None:  # oneof group data
-            size += util.size_message(b"J", self.histogram)
-        if self.exponential_histogram is not None:  # oneof group data
-            size += util.size_message(b"R", self.exponential_histogram)
-        if self.summary is not None:  # oneof group data
-            size += util.size_message(b"Z", self.summary)
+            v = self.unit.encode("utf-8")
+            self._unit_encoded = v
+            size += len(b"\x1a") + size_varint32(len(v)) + len(v)
+        if self.gauge is not None:
+            size += (
+                len(b"*")
+                + size_varint32(self.gauge._get_size())
+                + self.gauge._get_size()
+            )
+        if self.sum is not None:
+            size += (
+                len(b":") + size_varint32(self.sum._get_size()) + self.sum._get_size()
+            )
+        if self.histogram is not None:
+            size += (
+                len(b"J")
+                + size_varint32(self.histogram._get_size())
+                + self.histogram._get_size()
+            )
+        if self.exponential_histogram is not None:
+            size += (
+                len(b"R")
+                + size_varint32(self.exponential_histogram._get_size())
+                + self.exponential_histogram._get_size()
+            )
+        if self.summary is not None:
+            size += (
+                len(b"Z")
+                + size_varint32(self.summary._get_size())
+                + self.summary._get_size()
+            )
         if self.metadata:
-            size += util.size_repeated_message(b"b", self.metadata)
+            size += sum(
+                message._get_size() + len(b"b") + size_varint32(message._get_size())
+                for message in self.metadata
+            )
         return size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.name:
-            proto_serializer.serialize_string(b"\n", self.name)
+            v = self._name_encoded
+            proto_serializer.out.write(b"\n")
+            proto_serializer._write_varint_unsigned(len(v))
+            proto_serializer.out.write(v)
         if self.description:
-            proto_serializer.serialize_string(b"\x12", self.description)
+            v = self._description_encoded
+            proto_serializer.out.write(b"\x12")
+            proto_serializer._write_varint_unsigned(len(v))
+            proto_serializer.out.write(v)
         if self.unit:
-            proto_serializer.serialize_string(b"\x1a", self.unit)
-        if self.gauge is not None:  # oneof group data
-            proto_serializer.serialize_message(b"*", self.gauge)
-        if self.sum is not None:  # oneof group data
-            proto_serializer.serialize_message(b":", self.sum)
-        if self.histogram is not None:  # oneof group data
-            proto_serializer.serialize_message(b"J", self.histogram)
-        if self.exponential_histogram is not None:  # oneof group data
-            proto_serializer.serialize_message(b"R", self.exponential_histogram)
-        if self.summary is not None:  # oneof group data
-            proto_serializer.serialize_message(b"Z", self.summary)
+            v = self._unit_encoded
+            proto_serializer.out.write(b"\x1a")
+            proto_serializer._write_varint_unsigned(len(v))
+            proto_serializer.out.write(v)
+        if self.gauge is not None:
+            proto_serializer.out.write(b"*")
+            proto_serializer._write_varint_unsigned(self.gauge._get_size())
+            self.gauge.write_to(proto_serializer)
+        if self.sum is not None:
+            proto_serializer.out.write(b":")
+            proto_serializer._write_varint_unsigned(self.sum._get_size())
+            self.sum.write_to(proto_serializer)
+        if self.histogram is not None:
+            proto_serializer.out.write(b"J")
+            proto_serializer._write_varint_unsigned(self.histogram._get_size())
+            self.histogram.write_to(proto_serializer)
+        if self.exponential_histogram is not None:
+            proto_serializer.out.write(b"R")
+            proto_serializer._write_varint_unsigned(
+                self.exponential_histogram._get_size()
+            )
+            self.exponential_histogram.write_to(proto_serializer)
+        if self.summary is not None:
+            proto_serializer.out.write(b"Z")
+            proto_serializer._write_varint_unsigned(self.summary._get_size())
+            self.summary.write_to(proto_serializer)
         if self.metadata:
-            proto_serializer.serialize_repeated_message(b"b", self.metadata)
+            for v in self.metadata:
+                proto_serializer.out.write(b"b")
+                proto_serializer._write_varint_unsigned(v._get_size())
+                v.write_to(proto_serializer)
 
 
 class Gauge(MessageMarshaler):
@@ -183,17 +272,22 @@ class Gauge(MessageMarshaler):
         data_points: List[NumberDataPoint] = None,
     ):
         self.data_points: List[NumberDataPoint] = data_points
-        super().__init__()
 
     def calculate_size(self) -> int:
         size = 0
         if self.data_points:
-            size += util.size_repeated_message(b"\n", self.data_points)
+            size += sum(
+                message._get_size() + len(b"\n") + size_varint32(message._get_size())
+                for message in self.data_points
+            )
         return size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.data_points:
-            proto_serializer.serialize_repeated_message(b"\n", self.data_points)
+            for v in self.data_points:
+                proto_serializer.out.write(b"\n")
+                proto_serializer._write_varint_unsigned(v._get_size())
+                v.write_to(proto_serializer)
 
 
 class Sum(MessageMarshaler):
@@ -206,25 +300,38 @@ class Sum(MessageMarshaler):
         self.data_points: List[NumberDataPoint] = data_points
         self.aggregation_temporality: int = aggregation_temporality
         self.is_monotonic: bool = is_monotonic
-        super().__init__()
 
     def calculate_size(self) -> int:
         size = 0
         if self.data_points:
-            size += util.size_repeated_message(b"\n", self.data_points)
+            size += sum(
+                message._get_size() + len(b"\n") + size_varint32(message._get_size())
+                for message in self.data_points
+            )
         if self.aggregation_temporality:
-            size += util.size_enum(b"\x10", self.aggregation_temporality)
+            v = self.aggregation_temporality
+            if not isinstance(v, int):
+                v = v.self.aggregation_temporality
+            size += len(b"\x10") + size_varint32(v)
         if self.is_monotonic:
-            size += util.size_bool(b"\x18", self.is_monotonic)
+            size += len(b"\x18") + 1
         return size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.data_points:
-            proto_serializer.serialize_repeated_message(b"\n", self.data_points)
+            for v in self.data_points:
+                proto_serializer.out.write(b"\n")
+                proto_serializer._write_varint_unsigned(v._get_size())
+                v.write_to(proto_serializer)
         if self.aggregation_temporality:
-            proto_serializer.serialize_enum(b"\x10", self.aggregation_temporality)
+            v = self.aggregation_temporality
+            if not isinstance(v, int):
+                v = v.self.aggregation_temporality
+            proto_serializer.out.write(b"\x10")
+            proto_serializer._write_varint_unsigned(v)
         if self.is_monotonic:
-            proto_serializer.serialize_bool(b"\x18", self.is_monotonic)
+            proto_serializer.out.write(b"\x18")
+            proto_serializer._write_varint_unsigned(1 if self.is_monotonic else 0)
 
 
 class Histogram(MessageMarshaler):
@@ -235,21 +342,33 @@ class Histogram(MessageMarshaler):
     ):
         self.data_points: List[HistogramDataPoint] = data_points
         self.aggregation_temporality: int = aggregation_temporality
-        super().__init__()
 
     def calculate_size(self) -> int:
         size = 0
         if self.data_points:
-            size += util.size_repeated_message(b"\n", self.data_points)
+            size += sum(
+                message._get_size() + len(b"\n") + size_varint32(message._get_size())
+                for message in self.data_points
+            )
         if self.aggregation_temporality:
-            size += util.size_enum(b"\x10", self.aggregation_temporality)
+            v = self.aggregation_temporality
+            if not isinstance(v, int):
+                v = v.self.aggregation_temporality
+            size += len(b"\x10") + size_varint32(v)
         return size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.data_points:
-            proto_serializer.serialize_repeated_message(b"\n", self.data_points)
+            for v in self.data_points:
+                proto_serializer.out.write(b"\n")
+                proto_serializer._write_varint_unsigned(v._get_size())
+                v.write_to(proto_serializer)
         if self.aggregation_temporality:
-            proto_serializer.serialize_enum(b"\x10", self.aggregation_temporality)
+            v = self.aggregation_temporality
+            if not isinstance(v, int):
+                v = v.self.aggregation_temporality
+            proto_serializer.out.write(b"\x10")
+            proto_serializer._write_varint_unsigned(v)
 
 
 class ExponentialHistogram(MessageMarshaler):
@@ -260,21 +379,33 @@ class ExponentialHistogram(MessageMarshaler):
     ):
         self.data_points: List[ExponentialHistogramDataPoint] = data_points
         self.aggregation_temporality: int = aggregation_temporality
-        super().__init__()
 
     def calculate_size(self) -> int:
         size = 0
         if self.data_points:
-            size += util.size_repeated_message(b"\n", self.data_points)
+            size += sum(
+                message._get_size() + len(b"\n") + size_varint32(message._get_size())
+                for message in self.data_points
+            )
         if self.aggregation_temporality:
-            size += util.size_enum(b"\x10", self.aggregation_temporality)
+            v = self.aggregation_temporality
+            if not isinstance(v, int):
+                v = v.self.aggregation_temporality
+            size += len(b"\x10") + size_varint32(v)
         return size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.data_points:
-            proto_serializer.serialize_repeated_message(b"\n", self.data_points)
+            for v in self.data_points:
+                proto_serializer.out.write(b"\n")
+                proto_serializer._write_varint_unsigned(v._get_size())
+                v.write_to(proto_serializer)
         if self.aggregation_temporality:
-            proto_serializer.serialize_enum(b"\x10", self.aggregation_temporality)
+            v = self.aggregation_temporality
+            if not isinstance(v, int):
+                v = v.self.aggregation_temporality
+            proto_serializer.out.write(b"\x10")
+            proto_serializer._write_varint_unsigned(v)
 
 
 class Summary(MessageMarshaler):
@@ -283,17 +414,22 @@ class Summary(MessageMarshaler):
         data_points: List[SummaryDataPoint] = None,
     ):
         self.data_points: List[SummaryDataPoint] = data_points
-        super().__init__()
 
     def calculate_size(self) -> int:
         size = 0
         if self.data_points:
-            size += util.size_repeated_message(b"\n", self.data_points)
+            size += sum(
+                message._get_size() + len(b"\n") + size_varint32(message._get_size())
+                for message in self.data_points
+            )
         return size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.data_points:
-            proto_serializer.serialize_repeated_message(b"\n", self.data_points)
+            for v in self.data_points:
+                proto_serializer.out.write(b"\n")
+                proto_serializer._write_varint_unsigned(v._get_size())
+                v.write_to(proto_serializer)
 
 
 class NumberDataPoint(MessageMarshaler):
@@ -314,41 +450,57 @@ class NumberDataPoint(MessageMarshaler):
         self.as_int: int = as_int
         self.attributes: List[KeyValue] = attributes
         self.flags: int = flags
-        super().__init__()
 
     def calculate_size(self) -> int:
         size = 0
         if self.start_time_unix_nano:
-            size += util.size_fixed64(b"\x11", self.start_time_unix_nano)
+            size += len(b"\x11") + 8
         if self.time_unix_nano:
-            size += util.size_fixed64(b"\x19", self.time_unix_nano)
-        if self.as_double is not None:  # oneof group value
-            size += util.size_double(b"!", self.as_double)
+            size += len(b"\x19") + 8
+        if self.as_double is not None:
+            size += len(b"!") + 8
         if self.exemplars:
-            size += util.size_repeated_message(b"*", self.exemplars)
-        if self.as_int is not None:  # oneof group value
-            size += util.size_sfixed64(b"1", self.as_int)
+            size += sum(
+                message._get_size() + len(b"*") + size_varint32(message._get_size())
+                for message in self.exemplars
+            )
+        if self.as_int is not None:
+            size += len(b"1") + 8
         if self.attributes:
-            size += util.size_repeated_message(b":", self.attributes)
+            size += sum(
+                message._get_size() + len(b":") + size_varint32(message._get_size())
+                for message in self.attributes
+            )
         if self.flags:
-            size += util.size_uint32(b"@", self.flags)
+            size += len(b"@") + size_varint32(self.flags)
         return size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.start_time_unix_nano:
-            proto_serializer.serialize_fixed64(b"\x11", self.start_time_unix_nano)
+            proto_serializer.out.write(b"\x11")
+            proto_serializer.out.write(struct.pack("<Q", self.start_time_unix_nano))
         if self.time_unix_nano:
-            proto_serializer.serialize_fixed64(b"\x19", self.time_unix_nano)
-        if self.as_double is not None:  # oneof group value
-            proto_serializer.serialize_double(b"!", self.as_double)
+            proto_serializer.out.write(b"\x19")
+            proto_serializer.out.write(struct.pack("<Q", self.time_unix_nano))
+        if self.as_double is not None:
+            proto_serializer.out.write(b"!")
+            proto_serializer.out.write(struct.pack("<d", self.as_double))
         if self.exemplars:
-            proto_serializer.serialize_repeated_message(b"*", self.exemplars)
-        if self.as_int is not None:  # oneof group value
-            proto_serializer.serialize_sfixed64(b"1", self.as_int)
+            for v in self.exemplars:
+                proto_serializer.out.write(b"*")
+                proto_serializer._write_varint_unsigned(v._get_size())
+                v.write_to(proto_serializer)
+        if self.as_int is not None:
+            proto_serializer.out.write(b"1")
+            proto_serializer.out.write(struct.pack("<q", self.as_int))
         if self.attributes:
-            proto_serializer.serialize_repeated_message(b":", self.attributes)
+            for v in self.attributes:
+                proto_serializer.out.write(b":")
+                proto_serializer._write_varint_unsigned(v._get_size())
+                v.write_to(proto_serializer)
         if self.flags:
-            proto_serializer.serialize_uint32(b"@", self.flags)
+            proto_serializer.out.write(b"@")
+            proto_serializer._write_varint_unsigned(self.flags)
 
 
 class HistogramDataPoint(MessageMarshaler):
@@ -377,57 +529,89 @@ class HistogramDataPoint(MessageMarshaler):
         self.flags: int = flags
         self.min: float = min
         self.max: float = max
-        super().__init__()
 
     def calculate_size(self) -> int:
         size = 0
         if self.start_time_unix_nano:
-            size += util.size_fixed64(b"\x11", self.start_time_unix_nano)
+            size += len(b"\x11") + 8
         if self.time_unix_nano:
-            size += util.size_fixed64(b"\x19", self.time_unix_nano)
+            size += len(b"\x19") + 8
         if self.count:
-            size += util.size_fixed64(b"!", self.count)
-        if self.sum is not None:  # oneof group _sum
-            size += util.size_double(b")", self.sum)
+            size += len(b"!") + 8
+        if self.sum is not None:
+            size += len(b")") + 8
         if self.bucket_counts:
-            size += util.size_repeated_fixed64(b"2", self.bucket_counts)
+            size += (
+                len(b"2")
+                + len(self.bucket_counts) * 8
+                + size_varint32(len(self.bucket_counts) * 8)
+            )
         if self.explicit_bounds:
-            size += util.size_repeated_double(b":", self.explicit_bounds)
+            size += (
+                len(b":")
+                + len(self.explicit_bounds) * 8
+                + size_varint32(len(self.explicit_bounds) * 8)
+            )
         if self.exemplars:
-            size += util.size_repeated_message(b"B", self.exemplars)
+            size += sum(
+                message._get_size() + len(b"B") + size_varint32(message._get_size())
+                for message in self.exemplars
+            )
         if self.attributes:
-            size += util.size_repeated_message(b"J", self.attributes)
+            size += sum(
+                message._get_size() + len(b"J") + size_varint32(message._get_size())
+                for message in self.attributes
+            )
         if self.flags:
-            size += util.size_uint32(b"P", self.flags)
-        if self.min is not None:  # oneof group _min
-            size += util.size_double(b"Y", self.min)
-        if self.max is not None:  # oneof group _max
-            size += util.size_double(b"a", self.max)
+            size += len(b"P") + size_varint32(self.flags)
+        if self.min is not None:
+            size += len(b"Y") + 8
+        if self.max is not None:
+            size += len(b"a") + 8
         return size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.start_time_unix_nano:
-            proto_serializer.serialize_fixed64(b"\x11", self.start_time_unix_nano)
+            proto_serializer.out.write(b"\x11")
+            proto_serializer.out.write(struct.pack("<Q", self.start_time_unix_nano))
         if self.time_unix_nano:
-            proto_serializer.serialize_fixed64(b"\x19", self.time_unix_nano)
+            proto_serializer.out.write(b"\x19")
+            proto_serializer.out.write(struct.pack("<Q", self.time_unix_nano))
         if self.count:
-            proto_serializer.serialize_fixed64(b"!", self.count)
-        if self.sum is not None:  # oneof group _sum
-            proto_serializer.serialize_double(b")", self.sum)
+            proto_serializer.out.write(b"!")
+            proto_serializer.out.write(struct.pack("<Q", self.count))
+        if self.sum is not None:
+            proto_serializer.out.write(b")")
+            proto_serializer.out.write(struct.pack("<d", self.sum))
         if self.bucket_counts:
-            proto_serializer.serialize_repeated_fixed64(b"2", self.bucket_counts)
+            proto_serializer.out.write(b"2")
+            proto_serializer._write_varint_unsigned(len(self.bucket_counts) * 8)
+            for v in self.bucket_counts:
+                proto_serializer.out.write(struct.pack("<Q", v))
         if self.explicit_bounds:
-            proto_serializer.serialize_repeated_double(b":", self.explicit_bounds)
+            proto_serializer.out.write(b":")
+            proto_serializer._write_varint_unsigned(len(self.explicit_bounds) * 8)
+            for v in self.explicit_bounds:
+                proto_serializer.out.write(struct.pack("<d", v))
         if self.exemplars:
-            proto_serializer.serialize_repeated_message(b"B", self.exemplars)
+            for v in self.exemplars:
+                proto_serializer.out.write(b"B")
+                proto_serializer._write_varint_unsigned(v._get_size())
+                v.write_to(proto_serializer)
         if self.attributes:
-            proto_serializer.serialize_repeated_message(b"J", self.attributes)
+            for v in self.attributes:
+                proto_serializer.out.write(b"J")
+                proto_serializer._write_varint_unsigned(v._get_size())
+                v.write_to(proto_serializer)
         if self.flags:
-            proto_serializer.serialize_uint32(b"P", self.flags)
-        if self.min is not None:  # oneof group _min
-            proto_serializer.serialize_double(b"Y", self.min)
-        if self.max is not None:  # oneof group _max
-            proto_serializer.serialize_double(b"a", self.max)
+            proto_serializer.out.write(b"P")
+            proto_serializer._write_varint_unsigned(self.flags)
+        if self.min is not None:
+            proto_serializer.out.write(b"Y")
+            proto_serializer.out.write(struct.pack("<d", self.min))
+        if self.max is not None:
+            proto_serializer.out.write(b"a")
+            proto_serializer.out.write(struct.pack("<d", self.max))
 
 
 class ExponentialHistogramDataPoint(MessageMarshaler):
@@ -462,69 +646,106 @@ class ExponentialHistogramDataPoint(MessageMarshaler):
         self.min: float = min
         self.max: float = max
         self.zero_threshold: float = zero_threshold
-        super().__init__()
 
     def calculate_size(self) -> int:
         size = 0
         if self.attributes:
-            size += util.size_repeated_message(b"\n", self.attributes)
+            size += sum(
+                message._get_size() + len(b"\n") + size_varint32(message._get_size())
+                for message in self.attributes
+            )
         if self.start_time_unix_nano:
-            size += util.size_fixed64(b"\x11", self.start_time_unix_nano)
+            size += len(b"\x11") + 8
         if self.time_unix_nano:
-            size += util.size_fixed64(b"\x19", self.time_unix_nano)
+            size += len(b"\x19") + 8
         if self.count:
-            size += util.size_fixed64(b"!", self.count)
-        if self.sum is not None:  # oneof group _sum
-            size += util.size_double(b")", self.sum)
+            size += len(b"!") + 8
+        if self.sum is not None:
+            size += len(b")") + 8
         if self.scale:
-            size += util.size_sint32(b"0", self.scale)
+            size += len(b"0") + size_varint32(
+                self.scale << 1 if self.scale >= 0 else (self.scale << 1) ^ (~0)
+            )
         if self.zero_count:
-            size += util.size_fixed64(b"9", self.zero_count)
+            size += len(b"9") + 8
         if self.positive is not None:
-            size += util.size_message(b"B", self.positive)
+            size += (
+                len(b"B")
+                + size_varint32(self.positive._get_size())
+                + self.positive._get_size()
+            )
         if self.negative is not None:
-            size += util.size_message(b"J", self.negative)
+            size += (
+                len(b"J")
+                + size_varint32(self.negative._get_size())
+                + self.negative._get_size()
+            )
         if self.flags:
-            size += util.size_uint32(b"P", self.flags)
+            size += len(b"P") + size_varint32(self.flags)
         if self.exemplars:
-            size += util.size_repeated_message(b"Z", self.exemplars)
-        if self.min is not None:  # oneof group _min
-            size += util.size_double(b"a", self.min)
-        if self.max is not None:  # oneof group _max
-            size += util.size_double(b"i", self.max)
+            size += sum(
+                message._get_size() + len(b"Z") + size_varint32(message._get_size())
+                for message in self.exemplars
+            )
+        if self.min is not None:
+            size += len(b"a") + 8
+        if self.max is not None:
+            size += len(b"i") + 8
         if self.zero_threshold:
-            size += util.size_double(b"q", self.zero_threshold)
+            size += len(b"q") + 8
         return size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.attributes:
-            proto_serializer.serialize_repeated_message(b"\n", self.attributes)
+            for v in self.attributes:
+                proto_serializer.out.write(b"\n")
+                proto_serializer._write_varint_unsigned(v._get_size())
+                v.write_to(proto_serializer)
         if self.start_time_unix_nano:
-            proto_serializer.serialize_fixed64(b"\x11", self.start_time_unix_nano)
+            proto_serializer.out.write(b"\x11")
+            proto_serializer.out.write(struct.pack("<Q", self.start_time_unix_nano))
         if self.time_unix_nano:
-            proto_serializer.serialize_fixed64(b"\x19", self.time_unix_nano)
+            proto_serializer.out.write(b"\x19")
+            proto_serializer.out.write(struct.pack("<Q", self.time_unix_nano))
         if self.count:
-            proto_serializer.serialize_fixed64(b"!", self.count)
-        if self.sum is not None:  # oneof group _sum
-            proto_serializer.serialize_double(b")", self.sum)
+            proto_serializer.out.write(b"!")
+            proto_serializer.out.write(struct.pack("<Q", self.count))
+        if self.sum is not None:
+            proto_serializer.out.write(b")")
+            proto_serializer.out.write(struct.pack("<d", self.sum))
         if self.scale:
-            proto_serializer.serialize_sint32(b"0", self.scale)
+            proto_serializer.out.write(b"0")
+            proto_serializer._write_varint_unsigned(
+                self.scale << 1 if self.scale >= 0 else (self.scale << 1) ^ (~0)
+            )
         if self.zero_count:
-            proto_serializer.serialize_fixed64(b"9", self.zero_count)
+            proto_serializer.out.write(b"9")
+            proto_serializer.out.write(struct.pack("<Q", self.zero_count))
         if self.positive is not None:
-            proto_serializer.serialize_message(b"B", self.positive)
+            proto_serializer.out.write(b"B")
+            proto_serializer._write_varint_unsigned(self.positive._get_size())
+            self.positive.write_to(proto_serializer)
         if self.negative is not None:
-            proto_serializer.serialize_message(b"J", self.negative)
+            proto_serializer.out.write(b"J")
+            proto_serializer._write_varint_unsigned(self.negative._get_size())
+            self.negative.write_to(proto_serializer)
         if self.flags:
-            proto_serializer.serialize_uint32(b"P", self.flags)
+            proto_serializer.out.write(b"P")
+            proto_serializer._write_varint_unsigned(self.flags)
         if self.exemplars:
-            proto_serializer.serialize_repeated_message(b"Z", self.exemplars)
-        if self.min is not None:  # oneof group _min
-            proto_serializer.serialize_double(b"a", self.min)
-        if self.max is not None:  # oneof group _max
-            proto_serializer.serialize_double(b"i", self.max)
+            for v in self.exemplars:
+                proto_serializer.out.write(b"Z")
+                proto_serializer._write_varint_unsigned(v._get_size())
+                v.write_to(proto_serializer)
+        if self.min is not None:
+            proto_serializer.out.write(b"a")
+            proto_serializer.out.write(struct.pack("<d", self.min))
+        if self.max is not None:
+            proto_serializer.out.write(b"i")
+            proto_serializer.out.write(struct.pack("<d", self.max))
         if self.zero_threshold:
-            proto_serializer.serialize_double(b"q", self.zero_threshold)
+            proto_serializer.out.write(b"q")
+            proto_serializer.out.write(struct.pack("<d", self.zero_threshold))
 
     class Buckets(MessageMarshaler):
         def __init__(
@@ -534,21 +755,30 @@ class ExponentialHistogramDataPoint(MessageMarshaler):
         ):
             self.offset: int = offset
             self.bucket_counts: List[int] = bucket_counts
-            super().__init__()
 
         def calculate_size(self) -> int:
             size = 0
             if self.offset:
-                size += util.size_sint32(b"\x08", self.offset)
+                size += len(b"\x08") + size_varint32(
+                    self.offset << 1 if self.offset >= 0 else (self.offset << 1) ^ (~0)
+                )
             if self.bucket_counts:
-                size += util.size_repeated_uint64(b"\x12", self.bucket_counts)
+                s = sum(size_varint64(uint32) for uint32 in self.bucket_counts)
+                self._bucket_counts_size = s
+                size += len(b"\x12") + s + size_varint32(s)
             return size
 
         def write_to(self, proto_serializer: ProtoSerializer) -> None:
             if self.offset:
-                proto_serializer.serialize_sint32(b"\x08", self.offset)
+                proto_serializer.out.write(b"\x08")
+                proto_serializer._write_varint_unsigned(
+                    self.offset << 1 if self.offset >= 0 else (self.offset << 1) ^ (~0)
+                )
             if self.bucket_counts:
-                proto_serializer.serialize_repeated_uint64(b"\x12", self.bucket_counts)
+                proto_serializer.out.write(b"\x12")
+                proto_serializer._write_varint_unsigned(self._bucket_counts_size)
+                for v in self.bucket_counts:
+                    proto_serializer._write_varint_unsigned(v)
 
 
 class SummaryDataPoint(MessageMarshaler):
@@ -569,41 +799,57 @@ class SummaryDataPoint(MessageMarshaler):
         self.quantile_values: List[SummaryDataPoint.ValueAtQuantile] = quantile_values
         self.attributes: List[KeyValue] = attributes
         self.flags: int = flags
-        super().__init__()
 
     def calculate_size(self) -> int:
         size = 0
         if self.start_time_unix_nano:
-            size += util.size_fixed64(b"\x11", self.start_time_unix_nano)
+            size += len(b"\x11") + 8
         if self.time_unix_nano:
-            size += util.size_fixed64(b"\x19", self.time_unix_nano)
+            size += len(b"\x19") + 8
         if self.count:
-            size += util.size_fixed64(b"!", self.count)
+            size += len(b"!") + 8
         if self.sum:
-            size += util.size_double(b")", self.sum)
+            size += len(b")") + 8
         if self.quantile_values:
-            size += util.size_repeated_message(b"2", self.quantile_values)
+            size += sum(
+                message._get_size() + len(b"2") + size_varint32(message._get_size())
+                for message in self.quantile_values
+            )
         if self.attributes:
-            size += util.size_repeated_message(b":", self.attributes)
+            size += sum(
+                message._get_size() + len(b":") + size_varint32(message._get_size())
+                for message in self.attributes
+            )
         if self.flags:
-            size += util.size_uint32(b"@", self.flags)
+            size += len(b"@") + size_varint32(self.flags)
         return size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.start_time_unix_nano:
-            proto_serializer.serialize_fixed64(b"\x11", self.start_time_unix_nano)
+            proto_serializer.out.write(b"\x11")
+            proto_serializer.out.write(struct.pack("<Q", self.start_time_unix_nano))
         if self.time_unix_nano:
-            proto_serializer.serialize_fixed64(b"\x19", self.time_unix_nano)
+            proto_serializer.out.write(b"\x19")
+            proto_serializer.out.write(struct.pack("<Q", self.time_unix_nano))
         if self.count:
-            proto_serializer.serialize_fixed64(b"!", self.count)
+            proto_serializer.out.write(b"!")
+            proto_serializer.out.write(struct.pack("<Q", self.count))
         if self.sum:
-            proto_serializer.serialize_double(b")", self.sum)
+            proto_serializer.out.write(b")")
+            proto_serializer.out.write(struct.pack("<d", self.sum))
         if self.quantile_values:
-            proto_serializer.serialize_repeated_message(b"2", self.quantile_values)
+            for v in self.quantile_values:
+                proto_serializer.out.write(b"2")
+                proto_serializer._write_varint_unsigned(v._get_size())
+                v.write_to(proto_serializer)
         if self.attributes:
-            proto_serializer.serialize_repeated_message(b":", self.attributes)
+            for v in self.attributes:
+                proto_serializer.out.write(b":")
+                proto_serializer._write_varint_unsigned(v._get_size())
+                v.write_to(proto_serializer)
         if self.flags:
-            proto_serializer.serialize_uint32(b"@", self.flags)
+            proto_serializer.out.write(b"@")
+            proto_serializer._write_varint_unsigned(self.flags)
 
     class ValueAtQuantile(MessageMarshaler):
         def __init__(
@@ -613,21 +859,22 @@ class SummaryDataPoint(MessageMarshaler):
         ):
             self.quantile: float = quantile
             self.value: float = value
-            super().__init__()
 
         def calculate_size(self) -> int:
             size = 0
             if self.quantile:
-                size += util.size_double(b"\t", self.quantile)
+                size += len(b"\t") + 8
             if self.value:
-                size += util.size_double(b"\x11", self.value)
+                size += len(b"\x11") + 8
             return size
 
         def write_to(self, proto_serializer: ProtoSerializer) -> None:
             if self.quantile:
-                proto_serializer.serialize_double(b"\t", self.quantile)
+                proto_serializer.out.write(b"\t")
+                proto_serializer.out.write(struct.pack("<d", self.quantile))
             if self.value:
-                proto_serializer.serialize_double(b"\x11", self.value)
+                proto_serializer.out.write(b"\x11")
+                proto_serializer.out.write(struct.pack("<d", self.value))
 
 
 class Exemplar(MessageMarshaler):
@@ -646,34 +893,46 @@ class Exemplar(MessageMarshaler):
         self.trace_id: bytes = trace_id
         self.as_int: int = as_int
         self.filtered_attributes: List[KeyValue] = filtered_attributes
-        super().__init__()
 
     def calculate_size(self) -> int:
         size = 0
         if self.time_unix_nano:
-            size += util.size_fixed64(b"\x11", self.time_unix_nano)
-        if self.as_double is not None:  # oneof group value
-            size += util.size_double(b"\x19", self.as_double)
+            size += len(b"\x11") + 8
+        if self.as_double is not None:
+            size += len(b"\x19") + 8
         if self.span_id:
-            size += util.size_bytes(b'"', self.span_id)
+            size += len(b'"') + size_varint32(len(self.span_id)) + len(self.span_id)
         if self.trace_id:
-            size += util.size_bytes(b"*", self.trace_id)
-        if self.as_int is not None:  # oneof group value
-            size += util.size_sfixed64(b"1", self.as_int)
+            size += len(b"*") + size_varint32(len(self.trace_id)) + len(self.trace_id)
+        if self.as_int is not None:
+            size += len(b"1") + 8
         if self.filtered_attributes:
-            size += util.size_repeated_message(b":", self.filtered_attributes)
+            size += sum(
+                message._get_size() + len(b":") + size_varint32(message._get_size())
+                for message in self.filtered_attributes
+            )
         return size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.time_unix_nano:
-            proto_serializer.serialize_fixed64(b"\x11", self.time_unix_nano)
-        if self.as_double is not None:  # oneof group value
-            proto_serializer.serialize_double(b"\x19", self.as_double)
+            proto_serializer.out.write(b"\x11")
+            proto_serializer.out.write(struct.pack("<Q", self.time_unix_nano))
+        if self.as_double is not None:
+            proto_serializer.out.write(b"\x19")
+            proto_serializer.out.write(struct.pack("<d", self.as_double))
         if self.span_id:
-            proto_serializer.serialize_bytes(b'"', self.span_id)
+            proto_serializer.out.write(b'"')
+            proto_serializer._write_varint_unsigned(len(self.span_id))
+            proto_serializer.out.write(self.span_id)
         if self.trace_id:
-            proto_serializer.serialize_bytes(b"*", self.trace_id)
-        if self.as_int is not None:  # oneof group value
-            proto_serializer.serialize_sfixed64(b"1", self.as_int)
+            proto_serializer.out.write(b"*")
+            proto_serializer._write_varint_unsigned(len(self.trace_id))
+            proto_serializer.out.write(self.trace_id)
+        if self.as_int is not None:
+            proto_serializer.out.write(b"1")
+            proto_serializer.out.write(struct.pack("<q", self.as_int))
         if self.filtered_attributes:
-            proto_serializer.serialize_repeated_message(b":", self.filtered_attributes)
+            for v in self.filtered_attributes:
+                proto_serializer.out.write(b":")
+                proto_serializer._write_varint_unsigned(v._get_size())
+                v.write_to(proto_serializer)

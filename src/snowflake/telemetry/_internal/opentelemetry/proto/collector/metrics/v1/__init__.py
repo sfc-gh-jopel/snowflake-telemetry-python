@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import struct
 from typing import (
     List,
     Optional,
@@ -13,7 +14,8 @@ from snowflake.telemetry._internal.serialize import (
     Enum,
     MessageMarshaler,
     ProtoSerializer,
-    util,
+    size_varint32,
+    size_varint64,
 )
 
 
@@ -23,17 +25,22 @@ class ExportMetricsServiceRequest(MessageMarshaler):
         resource_metrics: List[ResourceMetrics] = None,
     ):
         self.resource_metrics: List[ResourceMetrics] = resource_metrics
-        super().__init__()
 
     def calculate_size(self) -> int:
         size = 0
         if self.resource_metrics:
-            size += util.size_repeated_message(b"\n", self.resource_metrics)
+            size += sum(
+                message._get_size() + len(b"\n") + size_varint32(message._get_size())
+                for message in self.resource_metrics
+            )
         return size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.resource_metrics:
-            proto_serializer.serialize_repeated_message(b"\n", self.resource_metrics)
+            for v in self.resource_metrics:
+                proto_serializer.out.write(b"\n")
+                proto_serializer._write_varint_unsigned(v._get_size())
+                v.write_to(proto_serializer)
 
 
 class ExportMetricsServiceResponse(MessageMarshaler):
@@ -42,17 +49,22 @@ class ExportMetricsServiceResponse(MessageMarshaler):
         partial_success: ExportMetricsPartialSuccess = None,
     ):
         self.partial_success: ExportMetricsPartialSuccess = partial_success
-        super().__init__()
 
     def calculate_size(self) -> int:
         size = 0
         if self.partial_success is not None:
-            size += util.size_message(b"\n", self.partial_success)
+            size += (
+                len(b"\n")
+                + size_varint32(self.partial_success._get_size())
+                + self.partial_success._get_size()
+            )
         return size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.partial_success is not None:
-            proto_serializer.serialize_message(b"\n", self.partial_success)
+            proto_serializer.out.write(b"\n")
+            proto_serializer._write_varint_unsigned(self.partial_success._get_size())
+            self.partial_success.write_to(proto_serializer)
 
 
 class ExportMetricsPartialSuccess(MessageMarshaler):
@@ -63,18 +75,31 @@ class ExportMetricsPartialSuccess(MessageMarshaler):
     ):
         self.rejected_data_points: int = rejected_data_points
         self.error_message: str = error_message
-        super().__init__()
 
     def calculate_size(self) -> int:
         size = 0
         if self.rejected_data_points:
-            size += util.size_int64(b"\x08", self.rejected_data_points)
+            size += len(b"\x08") + size_varint64(
+                self.rejected_data_points + (1 << 64)
+                if self.rejected_data_points < 0
+                else self.rejected_data_points
+            )
         if self.error_message:
-            size += util.size_string(b"\x12", self.error_message)
+            v = self.error_message.encode("utf-8")
+            self._error_message_encoded = v
+            size += len(b"\x12") + size_varint32(len(v)) + len(v)
         return size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.rejected_data_points:
-            proto_serializer.serialize_int64(b"\x08", self.rejected_data_points)
+            proto_serializer.out.write(b"\x08")
+            proto_serializer._write_varint_unsigned(
+                self.rejected_data_points + (1 << 64)
+                if self.rejected_data_points < 0
+                else self.rejected_data_points
+            )
         if self.error_message:
-            proto_serializer.serialize_string(b"\x12", self.error_message)
+            v = self._error_message_encoded
+            proto_serializer.out.write(b"\x12")
+            proto_serializer._write_varint_unsigned(len(v))
+            proto_serializer.out.write(v)

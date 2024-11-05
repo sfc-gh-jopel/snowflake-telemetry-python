@@ -3,11 +3,13 @@
 
 from __future__ import annotations
 
+import struct
 from snowflake.telemetry._internal.serialize import (
     Enum,
     ProtoSerializer,
     MessageMarshaler,
-    util,
+    size_varint32,
+    size_varint64,
 )
 from typing import List, Optional
     
@@ -33,20 +35,17 @@ class {{ message.name }}(MessageMarshaler):
 {%- for field in message.fields %}
         self.{{ field.name }}: {{ field.python_type }} = {{ field.name }}
 {%- endfor %}
-        super().__init__()
 
     def calculate_size(self) -> int:
         size = 0
 {%- for field in message.fields %}
-        if self.{{ field.name }}{% if field.encode_presence %} is not None{% endif %}: {% if field.group %}# oneof group {{ field.group }}{% endif %}
-            size += util.size_{{ field.proto_type }}({{ field.tag }}, self.{{ field.name }})
+        {{ field.size_field_inline | indent(8) }}
 {%- endfor %}
         return size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
 {%- for field in message.fields %}
-        if self.{{ field.name }}{% if field.encode_presence %} is not None{% endif %}: {% if field.group %}# oneof group {{ field.group }}{% endif %}
-            proto_serializer.serialize_{{ field.proto_type }}({{ field.tag }}, self.{{ field.name }})
+        {{ field.serialize_field_inline | indent(8) }}
 {%- endfor %}
 
 {% for nested_enum in message.enums %}

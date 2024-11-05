@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import struct
 from typing import (
     List,
     Optional,
@@ -13,7 +14,8 @@ from snowflake.telemetry._internal.serialize import (
     Enum,
     MessageMarshaler,
     ProtoSerializer,
-    util,
+    size_varint32,
+    size_varint64,
 )
 
 
@@ -25,18 +27,24 @@ class Resource(MessageMarshaler):
     ):
         self.attributes: List[KeyValue] = attributes
         self.dropped_attributes_count: int = dropped_attributes_count
-        super().__init__()
 
     def calculate_size(self) -> int:
         size = 0
         if self.attributes:
-            size += util.size_repeated_message(b"\n", self.attributes)
+            size += sum(
+                message._get_size() + len(b"\n") + size_varint32(message._get_size())
+                for message in self.attributes
+            )
         if self.dropped_attributes_count:
-            size += util.size_uint32(b"\x10", self.dropped_attributes_count)
+            size += len(b"\x10") + size_varint32(self.dropped_attributes_count)
         return size
 
     def write_to(self, proto_serializer: ProtoSerializer) -> None:
         if self.attributes:
-            proto_serializer.serialize_repeated_message(b"\n", self.attributes)
+            for v in self.attributes:
+                proto_serializer.out.write(b"\n")
+                proto_serializer._write_varint_unsigned(v._get_size())
+                v.write_to(proto_serializer)
         if self.dropped_attributes_count:
-            proto_serializer.serialize_uint32(b"\x10", self.dropped_attributes_count)
+            proto_serializer.out.write(b"\x10")
+            proto_serializer._write_varint_unsigned(self.dropped_attributes_count)
