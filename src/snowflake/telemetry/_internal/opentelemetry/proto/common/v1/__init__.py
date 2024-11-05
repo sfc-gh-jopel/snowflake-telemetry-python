@@ -73,33 +73,33 @@ class AnyValue(MessageMarshaler):
     def write_to(self, out: BytesIO) -> None:
         if self.string_value is not None:
             v = self._string_value_encoded
-            out.write(b"\n")
+            out += b"\n"
             write_varint_unsigned(out, len(v))
-            out.write(v)
+            out += v
         if self.bool_value is not None:
-            out.write(b"\x10")
+            out += b"\x10"
             write_varint_unsigned(out, 1 if self.bool_value else 0)
         if self.int_value is not None:
-            out.write(b"\x18")
+            out += b"\x18"
             write_varint_unsigned(
                 out,
                 self.int_value + (1 << 64) if self.int_value < 0 else self.int_value,
             )
         if self.double_value is not None:
-            out.write(b"!")
-            out.write(struct.pack("<d", self.double_value))
+            out += b"!"
+            out += struct.pack("<d", self.double_value)
         if self.array_value is not None:
-            out.write(b"*")
+            out += b"*"
             write_varint_unsigned(out, self.array_value._get_size())
             self.array_value.write_to(out)
         if self.kvlist_value is not None:
-            out.write(b"2")
+            out += b"2"
             write_varint_unsigned(out, self.kvlist_value._get_size())
             self.kvlist_value.write_to(out)
         if self.bytes_value is not None:
-            out.write(b":")
+            out += b":"
             write_varint_unsigned(out, len(self.bytes_value))
-            out.write(self.bytes_value)
+            out += self.bytes_value
 
 
 class ArrayValue(MessageMarshaler):
@@ -121,7 +121,7 @@ class ArrayValue(MessageMarshaler):
     def write_to(self, out: BytesIO) -> None:
         if self.values:
             for v in self.values:
-                out.write(b"\n")
+                out += b"\n"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
 
@@ -145,7 +145,7 @@ class KeyValueList(MessageMarshaler):
     def write_to(self, out: BytesIO) -> None:
         if self.values:
             for v in self.values:
-                out.write(b"\n")
+                out += b"\n"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
 
@@ -176,11 +176,11 @@ class KeyValue(MessageMarshaler):
     def write_to(self, out: BytesIO) -> None:
         if self.key:
             v = self._key_encoded
-            out.write(b"\n")
+            out += b"\n"
             write_varint_unsigned(out, len(v))
-            out.write(v)
+            out += v
         if self.value is not None:
-            out.write(b"\x12")
+            out += b"\x12"
             write_varint_unsigned(out, self.value._get_size())
             self.value.write_to(out)
 
@@ -220,19 +220,19 @@ class InstrumentationScope(MessageMarshaler):
     def write_to(self, out: BytesIO) -> None:
         if self.name:
             v = self._name_encoded
-            out.write(b"\n")
+            out += b"\n"
             write_varint_unsigned(out, len(v))
-            out.write(v)
+            out += v
         if self.version:
             v = self._version_encoded
-            out.write(b"\x12")
+            out += b"\x12"
             write_varint_unsigned(out, len(v))
-            out.write(v)
+            out += v
         if self.attributes:
             for v in self.attributes:
-                out.write(b"\x1a")
+                out += b"\x1a"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
         if self.dropped_attributes_count:
-            out.write(b" ")
+            out += b" "
             write_varint_unsigned(out, self.dropped_attributes_count)

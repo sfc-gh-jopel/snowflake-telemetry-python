@@ -39,7 +39,7 @@ class ExportLogsServiceRequest(MessageMarshaler):
     def write_to(self, out: BytesIO) -> None:
         if self.resource_logs:
             for v in self.resource_logs:
-                out.write(b"\n")
+                out += b"\n"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
 
@@ -63,7 +63,7 @@ class ExportLogsServiceResponse(MessageMarshaler):
 
     def write_to(self, out: BytesIO) -> None:
         if self.partial_success is not None:
-            out.write(b"\n")
+            out += b"\n"
             write_varint_unsigned(out, self.partial_success._get_size())
             self.partial_success.write_to(out)
 
@@ -93,7 +93,7 @@ class ExportLogsPartialSuccess(MessageMarshaler):
 
     def write_to(self, out: BytesIO) -> None:
         if self.rejected_log_records:
-            out.write(b"\x08")
+            out += b"\x08"
             write_varint_unsigned(
                 out,
                 (
@@ -104,6 +104,6 @@ class ExportLogsPartialSuccess(MessageMarshaler):
             )
         if self.error_message:
             v = self._error_message_encoded
-            out.write(b"\x12")
+            out += b"\x12"
             write_varint_unsigned(out, len(v))
-            out.write(v)
+            out += v

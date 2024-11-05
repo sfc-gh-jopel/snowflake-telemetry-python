@@ -51,7 +51,7 @@ class MetricsData(MessageMarshaler):
     def write_to(self, out: BytesIO) -> None:
         if self.resource_metrics:
             for v in self.resource_metrics:
-                out.write(b"\n")
+                out += b"\n"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
 
@@ -88,19 +88,19 @@ class ResourceMetrics(MessageMarshaler):
 
     def write_to(self, out: BytesIO) -> None:
         if self.resource is not None:
-            out.write(b"\n")
+            out += b"\n"
             write_varint_unsigned(out, self.resource._get_size())
             self.resource.write_to(out)
         if self.scope_metrics:
             for v in self.scope_metrics:
-                out.write(b"\x12")
+                out += b"\x12"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
         if self.schema_url:
             v = self._schema_url_encoded
-            out.write(b"\x1a")
+            out += b"\x1a"
             write_varint_unsigned(out, len(v))
-            out.write(v)
+            out += v
 
 
 class ScopeMetrics(MessageMarshaler):
@@ -135,19 +135,19 @@ class ScopeMetrics(MessageMarshaler):
 
     def write_to(self, out: BytesIO) -> None:
         if self.scope is not None:
-            out.write(b"\n")
+            out += b"\n"
             write_varint_unsigned(out, self.scope._get_size())
             self.scope.write_to(out)
         if self.metrics:
             for v in self.metrics:
-                out.write(b"\x12")
+                out += b"\x12"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
         if self.schema_url:
             v = self._schema_url_encoded
-            out.write(b"\x1a")
+            out += b"\x1a"
             write_varint_unsigned(out, len(v))
-            out.write(v)
+            out += v
 
 
 class Metric(MessageMarshaler):
@@ -225,42 +225,42 @@ class Metric(MessageMarshaler):
     def write_to(self, out: BytesIO) -> None:
         if self.name:
             v = self._name_encoded
-            out.write(b"\n")
+            out += b"\n"
             write_varint_unsigned(out, len(v))
-            out.write(v)
+            out += v
         if self.description:
             v = self._description_encoded
-            out.write(b"\x12")
+            out += b"\x12"
             write_varint_unsigned(out, len(v))
-            out.write(v)
+            out += v
         if self.unit:
             v = self._unit_encoded
-            out.write(b"\x1a")
+            out += b"\x1a"
             write_varint_unsigned(out, len(v))
-            out.write(v)
+            out += v
         if self.gauge is not None:
-            out.write(b"*")
+            out += b"*"
             write_varint_unsigned(out, self.gauge._get_size())
             self.gauge.write_to(out)
         if self.sum is not None:
-            out.write(b":")
+            out += b":"
             write_varint_unsigned(out, self.sum._get_size())
             self.sum.write_to(out)
         if self.histogram is not None:
-            out.write(b"J")
+            out += b"J"
             write_varint_unsigned(out, self.histogram._get_size())
             self.histogram.write_to(out)
         if self.exponential_histogram is not None:
-            out.write(b"R")
+            out += b"R"
             write_varint_unsigned(out, self.exponential_histogram._get_size())
             self.exponential_histogram.write_to(out)
         if self.summary is not None:
-            out.write(b"Z")
+            out += b"Z"
             write_varint_unsigned(out, self.summary._get_size())
             self.summary.write_to(out)
         if self.metadata:
             for v in self.metadata:
-                out.write(b"b")
+                out += b"b"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
 
@@ -284,7 +284,7 @@ class Gauge(MessageMarshaler):
     def write_to(self, out: BytesIO) -> None:
         if self.data_points:
             for v in self.data_points:
-                out.write(b"\n")
+                out += b"\n"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
 
@@ -319,17 +319,17 @@ class Sum(MessageMarshaler):
     def write_to(self, out: BytesIO) -> None:
         if self.data_points:
             for v in self.data_points:
-                out.write(b"\n")
+                out += b"\n"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
         if self.aggregation_temporality:
             v = self.aggregation_temporality
             if not isinstance(v, int):
                 v = v.self.aggregation_temporality
-            out.write(b"\x10")
+            out += b"\x10"
             write_varint_unsigned(out, v)
         if self.is_monotonic:
-            out.write(b"\x18")
+            out += b"\x18"
             write_varint_unsigned(out, 1 if self.is_monotonic else 0)
 
 
@@ -359,14 +359,14 @@ class Histogram(MessageMarshaler):
     def write_to(self, out: BytesIO) -> None:
         if self.data_points:
             for v in self.data_points:
-                out.write(b"\n")
+                out += b"\n"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
         if self.aggregation_temporality:
             v = self.aggregation_temporality
             if not isinstance(v, int):
                 v = v.self.aggregation_temporality
-            out.write(b"\x10")
+            out += b"\x10"
             write_varint_unsigned(out, v)
 
 
@@ -396,14 +396,14 @@ class ExponentialHistogram(MessageMarshaler):
     def write_to(self, out: BytesIO) -> None:
         if self.data_points:
             for v in self.data_points:
-                out.write(b"\n")
+                out += b"\n"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
         if self.aggregation_temporality:
             v = self.aggregation_temporality
             if not isinstance(v, int):
                 v = v.self.aggregation_temporality
-            out.write(b"\x10")
+            out += b"\x10"
             write_varint_unsigned(out, v)
 
 
@@ -426,7 +426,7 @@ class Summary(MessageMarshaler):
     def write_to(self, out: BytesIO) -> None:
         if self.data_points:
             for v in self.data_points:
-                out.write(b"\n")
+                out += b"\n"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
 
@@ -476,29 +476,29 @@ class NumberDataPoint(MessageMarshaler):
 
     def write_to(self, out: BytesIO) -> None:
         if self.start_time_unix_nano:
-            out.write(b"\x11")
-            out.write(struct.pack("<Q", self.start_time_unix_nano))
+            out += b"\x11"
+            out += struct.pack("<Q", self.start_time_unix_nano)
         if self.time_unix_nano:
-            out.write(b"\x19")
-            out.write(struct.pack("<Q", self.time_unix_nano))
+            out += b"\x19"
+            out += struct.pack("<Q", self.time_unix_nano)
         if self.as_double is not None:
-            out.write(b"!")
-            out.write(struct.pack("<d", self.as_double))
+            out += b"!"
+            out += struct.pack("<d", self.as_double)
         if self.exemplars:
             for v in self.exemplars:
-                out.write(b"*")
+                out += b"*"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
         if self.as_int is not None:
-            out.write(b"1")
-            out.write(struct.pack("<q", self.as_int))
+            out += b"1"
+            out += struct.pack("<q", self.as_int)
         if self.attributes:
             for v in self.attributes:
-                out.write(b":")
+                out += b":"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
         if self.flags:
-            out.write(b"@")
+            out += b"@"
             write_varint_unsigned(out, self.flags)
 
 
@@ -571,46 +571,46 @@ class HistogramDataPoint(MessageMarshaler):
 
     def write_to(self, out: BytesIO) -> None:
         if self.start_time_unix_nano:
-            out.write(b"\x11")
-            out.write(struct.pack("<Q", self.start_time_unix_nano))
+            out += b"\x11"
+            out += struct.pack("<Q", self.start_time_unix_nano)
         if self.time_unix_nano:
-            out.write(b"\x19")
-            out.write(struct.pack("<Q", self.time_unix_nano))
+            out += b"\x19"
+            out += struct.pack("<Q", self.time_unix_nano)
         if self.count:
-            out.write(b"!")
-            out.write(struct.pack("<Q", self.count))
+            out += b"!"
+            out += struct.pack("<Q", self.count)
         if self.sum is not None:
-            out.write(b")")
-            out.write(struct.pack("<d", self.sum))
+            out += b")"
+            out += struct.pack("<d", self.sum)
         if self.bucket_counts:
-            out.write(b"2")
+            out += b"2"
             write_varint_unsigned(out, len(self.bucket_counts) * 8)
             for v in self.bucket_counts:
-                out.write(struct.pack("<Q", v))
+                out += struct.pack("<Q", v)
         if self.explicit_bounds:
-            out.write(b":")
+            out += b":"
             write_varint_unsigned(out, len(self.explicit_bounds) * 8)
             for v in self.explicit_bounds:
-                out.write(struct.pack("<d", v))
+                out += struct.pack("<d", v)
         if self.exemplars:
             for v in self.exemplars:
-                out.write(b"B")
+                out += b"B"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
         if self.attributes:
             for v in self.attributes:
-                out.write(b"J")
+                out += b"J"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
         if self.flags:
-            out.write(b"P")
+            out += b"P"
             write_varint_unsigned(out, self.flags)
         if self.min is not None:
-            out.write(b"Y")
-            out.write(struct.pack("<d", self.min))
+            out += b"Y"
+            out += struct.pack("<d", self.min)
         if self.max is not None:
-            out.write(b"a")
-            out.write(struct.pack("<d", self.max))
+            out += b"a"
+            out += struct.pack("<d", self.max)
 
 
 class ExponentialHistogramDataPoint(MessageMarshaler):
@@ -697,54 +697,54 @@ class ExponentialHistogramDataPoint(MessageMarshaler):
     def write_to(self, out: BytesIO) -> None:
         if self.attributes:
             for v in self.attributes:
-                out.write(b"\n")
+                out += b"\n"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
         if self.start_time_unix_nano:
-            out.write(b"\x11")
-            out.write(struct.pack("<Q", self.start_time_unix_nano))
+            out += b"\x11"
+            out += struct.pack("<Q", self.start_time_unix_nano)
         if self.time_unix_nano:
-            out.write(b"\x19")
-            out.write(struct.pack("<Q", self.time_unix_nano))
+            out += b"\x19"
+            out += struct.pack("<Q", self.time_unix_nano)
         if self.count:
-            out.write(b"!")
-            out.write(struct.pack("<Q", self.count))
+            out += b"!"
+            out += struct.pack("<Q", self.count)
         if self.sum is not None:
-            out.write(b")")
-            out.write(struct.pack("<d", self.sum))
+            out += b")"
+            out += struct.pack("<d", self.sum)
         if self.scale:
-            out.write(b"0")
+            out += b"0"
             write_varint_unsigned(
                 out, self.scale << 1 if self.scale >= 0 else (self.scale << 1) ^ (~0)
             )
         if self.zero_count:
-            out.write(b"9")
-            out.write(struct.pack("<Q", self.zero_count))
+            out += b"9"
+            out += struct.pack("<Q", self.zero_count)
         if self.positive is not None:
-            out.write(b"B")
+            out += b"B"
             write_varint_unsigned(out, self.positive._get_size())
             self.positive.write_to(out)
         if self.negative is not None:
-            out.write(b"J")
+            out += b"J"
             write_varint_unsigned(out, self.negative._get_size())
             self.negative.write_to(out)
         if self.flags:
-            out.write(b"P")
+            out += b"P"
             write_varint_unsigned(out, self.flags)
         if self.exemplars:
             for v in self.exemplars:
-                out.write(b"Z")
+                out += b"Z"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
         if self.min is not None:
-            out.write(b"a")
-            out.write(struct.pack("<d", self.min))
+            out += b"a"
+            out += struct.pack("<d", self.min)
         if self.max is not None:
-            out.write(b"i")
-            out.write(struct.pack("<d", self.max))
+            out += b"i"
+            out += struct.pack("<d", self.max)
         if self.zero_threshold:
-            out.write(b"q")
-            out.write(struct.pack("<d", self.zero_threshold))
+            out += b"q"
+            out += struct.pack("<d", self.zero_threshold)
 
     class Buckets(MessageMarshaler):
         def __init__(
@@ -769,13 +769,13 @@ class ExponentialHistogramDataPoint(MessageMarshaler):
 
         def write_to(self, out: BytesIO) -> None:
             if self.offset:
-                out.write(b"\x08")
+                out += b"\x08"
                 write_varint_unsigned(
                     out,
                     self.offset << 1 if self.offset >= 0 else (self.offset << 1) ^ (~0),
                 )
             if self.bucket_counts:
-                out.write(b"\x12")
+                out += b"\x12"
                 write_varint_unsigned(out, self._bucket_counts_size)
                 for v in self.bucket_counts:
                     write_varint_unsigned(out, v)
@@ -826,29 +826,29 @@ class SummaryDataPoint(MessageMarshaler):
 
     def write_to(self, out: BytesIO) -> None:
         if self.start_time_unix_nano:
-            out.write(b"\x11")
-            out.write(struct.pack("<Q", self.start_time_unix_nano))
+            out += b"\x11"
+            out += struct.pack("<Q", self.start_time_unix_nano)
         if self.time_unix_nano:
-            out.write(b"\x19")
-            out.write(struct.pack("<Q", self.time_unix_nano))
+            out += b"\x19"
+            out += struct.pack("<Q", self.time_unix_nano)
         if self.count:
-            out.write(b"!")
-            out.write(struct.pack("<Q", self.count))
+            out += b"!"
+            out += struct.pack("<Q", self.count)
         if self.sum:
-            out.write(b")")
-            out.write(struct.pack("<d", self.sum))
+            out += b")"
+            out += struct.pack("<d", self.sum)
         if self.quantile_values:
             for v in self.quantile_values:
-                out.write(b"2")
+                out += b"2"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
         if self.attributes:
             for v in self.attributes:
-                out.write(b":")
+                out += b":"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
         if self.flags:
-            out.write(b"@")
+            out += b"@"
             write_varint_unsigned(out, self.flags)
 
     class ValueAtQuantile(MessageMarshaler):
@@ -870,11 +870,11 @@ class SummaryDataPoint(MessageMarshaler):
 
         def write_to(self, out: BytesIO) -> None:
             if self.quantile:
-                out.write(b"\t")
-                out.write(struct.pack("<d", self.quantile))
+                out += b"\t"
+                out += struct.pack("<d", self.quantile)
             if self.value:
-                out.write(b"\x11")
-                out.write(struct.pack("<d", self.value))
+                out += b"\x11"
+                out += struct.pack("<d", self.value)
 
 
 class Exemplar(MessageMarshaler):
@@ -915,24 +915,24 @@ class Exemplar(MessageMarshaler):
 
     def write_to(self, out: BytesIO) -> None:
         if self.time_unix_nano:
-            out.write(b"\x11")
-            out.write(struct.pack("<Q", self.time_unix_nano))
+            out += b"\x11"
+            out += struct.pack("<Q", self.time_unix_nano)
         if self.as_double is not None:
-            out.write(b"\x19")
-            out.write(struct.pack("<d", self.as_double))
+            out += b"\x19"
+            out += struct.pack("<d", self.as_double)
         if self.span_id:
-            out.write(b'"')
+            out += b'"'
             write_varint_unsigned(out, len(self.span_id))
-            out.write(self.span_id)
+            out += self.span_id
         if self.trace_id:
-            out.write(b"*")
+            out += b"*"
             write_varint_unsigned(out, len(self.trace_id))
-            out.write(self.trace_id)
+            out += self.trace_id
         if self.as_int is not None:
-            out.write(b"1")
-            out.write(struct.pack("<q", self.as_int))
+            out += b"1"
+            out += struct.pack("<q", self.as_int)
         if self.filtered_attributes:
             for v in self.filtered_attributes:
-                out.write(b":")
+                out += b":"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)

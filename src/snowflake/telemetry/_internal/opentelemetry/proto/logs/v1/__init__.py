@@ -73,7 +73,7 @@ class LogsData(MessageMarshaler):
     def write_to(self, out: BytesIO) -> None:
         if self.resource_logs:
             for v in self.resource_logs:
-                out.write(b"\n")
+                out += b"\n"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
 
@@ -110,19 +110,19 @@ class ResourceLogs(MessageMarshaler):
 
     def write_to(self, out: BytesIO) -> None:
         if self.resource is not None:
-            out.write(b"\n")
+            out += b"\n"
             write_varint_unsigned(out, self.resource._get_size())
             self.resource.write_to(out)
         if self.scope_logs:
             for v in self.scope_logs:
-                out.write(b"\x12")
+                out += b"\x12"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
         if self.schema_url:
             v = self._schema_url_encoded
-            out.write(b"\x1a")
+            out += b"\x1a"
             write_varint_unsigned(out, len(v))
-            out.write(v)
+            out += v
 
 
 class ScopeLogs(MessageMarshaler):
@@ -157,19 +157,19 @@ class ScopeLogs(MessageMarshaler):
 
     def write_to(self, out: BytesIO) -> None:
         if self.scope is not None:
-            out.write(b"\n")
+            out += b"\n"
             write_varint_unsigned(out, self.scope._get_size())
             self.scope.write_to(out)
         if self.log_records:
             for v in self.log_records:
-                out.write(b"\x12")
+                out += b"\x12"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
         if self.schema_url:
             v = self._schema_url_encoded
-            out.write(b"\x1a")
+            out += b"\x1a"
             write_varint_unsigned(out, len(v))
-            out.write(v)
+            out += v
 
 
 class LogRecord(MessageMarshaler):
@@ -233,42 +233,42 @@ class LogRecord(MessageMarshaler):
 
     def write_to(self, out: BytesIO) -> None:
         if self.time_unix_nano:
-            out.write(b"\t")
-            out.write(struct.pack("<Q", self.time_unix_nano))
+            out += b"\t"
+            out += struct.pack("<Q", self.time_unix_nano)
         if self.severity_number:
             v = self.severity_number
             if not isinstance(v, int):
                 v = v.self.severity_number
-            out.write(b"\x10")
+            out += b"\x10"
             write_varint_unsigned(out, v)
         if self.severity_text:
             v = self._severity_text_encoded
-            out.write(b"\x1a")
+            out += b"\x1a"
             write_varint_unsigned(out, len(v))
-            out.write(v)
+            out += v
         if self.body is not None:
-            out.write(b"*")
+            out += b"*"
             write_varint_unsigned(out, self.body._get_size())
             self.body.write_to(out)
         if self.attributes:
             for v in self.attributes:
-                out.write(b"2")
+                out += b"2"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
         if self.dropped_attributes_count:
-            out.write(b"8")
+            out += b"8"
             write_varint_unsigned(out, self.dropped_attributes_count)
         if self.flags:
-            out.write(b"E")
-            out.write(struct.pack("<I", self.flags))
+            out += b"E"
+            out += struct.pack("<I", self.flags)
         if self.trace_id:
-            out.write(b"J")
+            out += b"J"
             write_varint_unsigned(out, len(self.trace_id))
-            out.write(self.trace_id)
+            out += self.trace_id
         if self.span_id:
-            out.write(b"R")
+            out += b"R"
             write_varint_unsigned(out, len(self.span_id))
-            out.write(self.span_id)
+            out += self.span_id
         if self.observed_time_unix_nano:
-            out.write(b"Y")
-            out.write(struct.pack("<Q", self.observed_time_unix_nano))
+            out += b"Y"
+            out += struct.pack("<Q", self.observed_time_unix_nano)

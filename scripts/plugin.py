@@ -5,7 +5,6 @@ import os
 import sys
 import struct
 import inspect
-from io import BytesIO
 from enum import IntEnum
 from typing import List, Optional, Union
 from textwrap import dedent, indent
@@ -109,101 +108,101 @@ def size_repeated_uint64(tag: bytes, value: List[int]):
 # Serialization functions
 # 
 
-def serialize_bool(out: BytesIO, tag: bytes, value: bool) -> None:
-    out.write(tag)
+def serialize_bool(out: bytearray, tag: bytes, value: bool) -> None:
+    out += tag
     write_varint_unsigned(out, 1 if value else 0)
 
-def serialize_enum(out: BytesIO, tag: bytes, value: Union[Enum, int]) -> None:
+def serialize_enum(out: bytearray, tag: bytes, value: Union[Enum, int]) -> None:
     v = value
     if not isinstance(v, int):
         v = v.value
-    out.write(tag)
+    out += tag
     write_varint_unsigned(out, v)
 
-def serialize_uint32(out: BytesIO, tag: bytes, value: int) -> None:
-    out.write(tag)
+def serialize_uint32(out: bytearray, tag: bytes, value: int) -> None:
+    out += tag
     write_varint_unsigned(out, value)
 
-def serialize_uint64(out: BytesIO, tag: bytes, value: int) -> None:
-    out.write(tag)
+def serialize_uint64(out: bytearray, tag: bytes, value: int) -> None:
+    out += tag
     write_varint_unsigned(out, value)
 
-def serialize_sint32(out: BytesIO, tag: bytes, value: int) -> None:
-    out.write(tag)
+def serialize_sint32(out: bytearray, tag: bytes, value: int) -> None:
+    out += tag
     write_varint_unsigned(out, value << 1 if value >= 0 else (value << 1) ^ (~0))
 
-def serialize_sint64(out: BytesIO, tag: bytes, value: int) -> None:
-    out.write(tag)
+def serialize_sint64(out: bytearray, tag: bytes, value: int) -> None:
+    out += tag
     write_varint_unsigned(out, value << 1 if value >= 0 else (value << 1) ^ (~0))
 
-def serialize_int32(out: BytesIO, tag: bytes, value: int) -> None:
-    out.write(tag)
+def serialize_int32(out: bytearray, tag: bytes, value: int) -> None:
+    out += tag
     write_varint_unsigned(out, value + (1 << 32) if value < 0 else value)
 
-def serialize_int64(out: BytesIO, tag: bytes, value: int) -> None:
-    out.write(tag)
+def serialize_int64(out: bytearray, tag: bytes, value: int) -> None:
+    out += tag
     write_varint_unsigned(out, value + (1 << 64) if value < 0 else value)
 
-def serialize_fixed32(out: BytesIO, tag: bytes, value: int) -> None:
-    out.write(tag)
-    out.write(struct.pack("<I", value))
+def serialize_fixed32(out: bytearray, tag: bytes, value: int) -> None:
+    out += tag
+    out += struct.pack("<I", value)
 
-def serialize_fixed64(out: BytesIO, tag: bytes, value: int) -> None:
-    out.write(tag)
-    out.write(struct.pack("<Q", value))
+def serialize_fixed64(out: bytearray, tag: bytes, value: int) -> None:
+    out += tag
+    out += struct.pack("<Q", value)
 
-def serialize_sfixed32(out: BytesIO, tag: bytes, value: int) -> None:
-    out.write(tag)
-    out.write(struct.pack("<i", value))
+def serialize_sfixed32(out: bytearray, tag: bytes, value: int) -> None:
+    out += tag
+    out += struct.pack("<i", value)
 
-def serialize_sfixed64(out: BytesIO, tag: bytes, value: int) -> None:
-    out.write(tag)
-    out.write(struct.pack("<q", value))
+def serialize_sfixed64(out: bytearray, tag: bytes, value: int) -> None:
+    out += tag
+    out += struct.pack("<q", value)
 
-def serialize_float(out: BytesIO, tag: bytes, value: float) -> None:
-    out.write(tag)
-    out.write(struct.pack("<f", value))
+def serialize_float(out: bytearray, tag: bytes, value: float) -> None:
+    out += tag
+    out += struct.pack("<f", value)
 
-def serialize_double(out: BytesIO, tag: bytes, value: float) -> None:
-    out.write(tag)
-    out.write(struct.pack("<d", value))
+def serialize_double(out: bytearray, tag: bytes, value: float) -> None:
+    out += tag
+    out += struct.pack("<d", value)
 
-def serialize_bytes(out: BytesIO, tag: bytes, value: bytes) -> None:
-    out.write(tag)
+def serialize_bytes(out: bytearray, tag: bytes, value: bytes) -> None:
+    out += tag
     write_varint_unsigned(out, len(value))
-    out.write(value)
+    out += value
 
-def serialize_string(out: BytesIO, tag: bytes, value: str) -> None:
+def serialize_string(out: bytearray, tag: bytes, value: str) -> None:
     v = self._fieldname_encoded
-    out.write(tag)
+    out += tag
     write_varint_unsigned(out, len(v))
-    out.write(v)
+    out += v
 
-def serialize_message(out: BytesIO, tag: bytes, value: MessageMarshaler) -> None:
-    out.write(tag)
+def serialize_message(out: bytearray, tag: bytes, value: MessageMarshaler) -> None:
+    out += tag
     write_varint_unsigned(out, value._get_size())
     value.write_to(out)
 
-def serialize_repeated_message(out: BytesIO, tag: bytes, value: List[MessageMarshaler]) -> None:
+def serialize_repeated_message(out: bytearray, tag: bytes, value: List[MessageMarshaler]) -> None:
     for v in value:
-        out.write(tag)
+        out += tag
         write_varint_unsigned(out, v._get_size())
         v.write_to(out)
 
-def serialize_repeated_double(out: BytesIO, tag: bytes, value: List[float]) -> None:
-    out.write(tag)
+def serialize_repeated_double(out: bytearray, tag: bytes, value: List[float]) -> None:
+    out += tag
     write_varint_unsigned(out, len(value) * 8)
     for v in value:
-        out.write(struct.pack("<d", v))
+        out += struct.pack("<d", v)
 
-def serialize_repeated_fixed64(out: BytesIO, tag: bytes, value: List[int]) -> None:
-    out.write(tag)
+def serialize_repeated_fixed64(out: bytearray, tag: bytes, value: List[int]) -> None:
+    out += tag
     write_varint_unsigned(out, len(value) * 8)
     for v in value:
-        out.write(struct.pack("<Q", v))
+        out += struct.pack("<Q", v)
 
-def serialize_repeated_uint64(out: BytesIO, tag: bytes, value: List[int]) -> None:
-    out.write(tag)
+def serialize_repeated_uint64(out: bytearray, tag: bytes, value: List[int]) -> None:
+    out += tag
     write_varint_unsigned(out, self._fieldname_size)
     for v in value:
         write_varint_unsigned(out, v)

@@ -47,7 +47,7 @@ class TracesData(MessageMarshaler):
     def write_to(self, out: BytesIO) -> None:
         if self.resource_spans:
             for v in self.resource_spans:
-                out.write(b"\n")
+                out += b"\n"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
 
@@ -84,19 +84,19 @@ class ResourceSpans(MessageMarshaler):
 
     def write_to(self, out: BytesIO) -> None:
         if self.resource is not None:
-            out.write(b"\n")
+            out += b"\n"
             write_varint_unsigned(out, self.resource._get_size())
             self.resource.write_to(out)
         if self.scope_spans:
             for v in self.scope_spans:
-                out.write(b"\x12")
+                out += b"\x12"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
         if self.schema_url:
             v = self._schema_url_encoded
-            out.write(b"\x1a")
+            out += b"\x1a"
             write_varint_unsigned(out, len(v))
-            out.write(v)
+            out += v
 
 
 class ScopeSpans(MessageMarshaler):
@@ -131,19 +131,19 @@ class ScopeSpans(MessageMarshaler):
 
     def write_to(self, out: BytesIO) -> None:
         if self.scope is not None:
-            out.write(b"\n")
+            out += b"\n"
             write_varint_unsigned(out, self.scope._get_size())
             self.scope.write_to(out)
         if self.spans:
             for v in self.spans:
-                out.write(b"\x12")
+                out += b"\x12"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
         if self.schema_url:
             v = self._schema_url_encoded
-            out.write(b"\x1a")
+            out += b"\x1a"
             write_varint_unsigned(out, len(v))
-            out.write(v)
+            out += v
 
 
 class Span(MessageMarshaler):
@@ -245,70 +245,70 @@ class Span(MessageMarshaler):
 
     def write_to(self, out: BytesIO) -> None:
         if self.trace_id:
-            out.write(b"\n")
+            out += b"\n"
             write_varint_unsigned(out, len(self.trace_id))
-            out.write(self.trace_id)
+            out += self.trace_id
         if self.span_id:
-            out.write(b"\x12")
+            out += b"\x12"
             write_varint_unsigned(out, len(self.span_id))
-            out.write(self.span_id)
+            out += self.span_id
         if self.trace_state:
             v = self._trace_state_encoded
-            out.write(b"\x1a")
+            out += b"\x1a"
             write_varint_unsigned(out, len(v))
-            out.write(v)
+            out += v
         if self.parent_span_id:
-            out.write(b'"')
+            out += b'"'
             write_varint_unsigned(out, len(self.parent_span_id))
-            out.write(self.parent_span_id)
+            out += self.parent_span_id
         if self.name:
             v = self._name_encoded
-            out.write(b"*")
+            out += b"*"
             write_varint_unsigned(out, len(v))
-            out.write(v)
+            out += v
         if self.kind:
             v = self.kind
             if not isinstance(v, int):
                 v = v.self.kind
-            out.write(b"0")
+            out += b"0"
             write_varint_unsigned(out, v)
         if self.start_time_unix_nano:
-            out.write(b"9")
-            out.write(struct.pack("<Q", self.start_time_unix_nano))
+            out += b"9"
+            out += struct.pack("<Q", self.start_time_unix_nano)
         if self.end_time_unix_nano:
-            out.write(b"A")
-            out.write(struct.pack("<Q", self.end_time_unix_nano))
+            out += b"A"
+            out += struct.pack("<Q", self.end_time_unix_nano)
         if self.attributes:
             for v in self.attributes:
-                out.write(b"J")
+                out += b"J"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
         if self.dropped_attributes_count:
-            out.write(b"P")
+            out += b"P"
             write_varint_unsigned(out, self.dropped_attributes_count)
         if self.events:
             for v in self.events:
-                out.write(b"Z")
+                out += b"Z"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
         if self.dropped_events_count:
-            out.write(b"`")
+            out += b"`"
             write_varint_unsigned(out, self.dropped_events_count)
         if self.links:
             for v in self.links:
-                out.write(b"j")
+                out += b"j"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
         if self.dropped_links_count:
-            out.write(b"p")
+            out += b"p"
             write_varint_unsigned(out, self.dropped_links_count)
         if self.status is not None:
-            out.write(b"z")
+            out += b"z"
             write_varint_unsigned(out, self.status._get_size())
             self.status.write_to(out)
         if self.flags:
-            out.write(b"\x85\x01")
-            out.write(struct.pack("<I", self.flags))
+            out += b"\x85\x01"
+            out += struct.pack("<I", self.flags)
 
     class SpanKind(Enum):
         SPAN_KIND_UNSPECIFIED = 0
@@ -352,20 +352,20 @@ class Span(MessageMarshaler):
 
         def write_to(self, out: BytesIO) -> None:
             if self.time_unix_nano:
-                out.write(b"\t")
-                out.write(struct.pack("<Q", self.time_unix_nano))
+                out += b"\t"
+                out += struct.pack("<Q", self.time_unix_nano)
             if self.name:
                 v = self._name_encoded
-                out.write(b"\x12")
+                out += b"\x12"
                 write_varint_unsigned(out, len(v))
-                out.write(v)
+                out += v
             if self.attributes:
                 for v in self.attributes:
-                    out.write(b"\x1a")
+                    out += b"\x1a"
                     write_varint_unsigned(out, v._get_size())
                     v.write_to(out)
             if self.dropped_attributes_count:
-                out.write(b" ")
+                out += b" "
                 write_varint_unsigned(out, self.dropped_attributes_count)
 
     class Link(MessageMarshaler):
@@ -412,29 +412,29 @@ class Span(MessageMarshaler):
 
         def write_to(self, out: BytesIO) -> None:
             if self.trace_id:
-                out.write(b"\n")
+                out += b"\n"
                 write_varint_unsigned(out, len(self.trace_id))
-                out.write(self.trace_id)
+                out += self.trace_id
             if self.span_id:
-                out.write(b"\x12")
+                out += b"\x12"
                 write_varint_unsigned(out, len(self.span_id))
-                out.write(self.span_id)
+                out += self.span_id
             if self.trace_state:
                 v = self._trace_state_encoded
-                out.write(b"\x1a")
+                out += b"\x1a"
                 write_varint_unsigned(out, len(v))
-                out.write(v)
+                out += v
             if self.attributes:
                 for v in self.attributes:
-                    out.write(b'"')
+                    out += b'"'
                     write_varint_unsigned(out, v._get_size())
                     v.write_to(out)
             if self.dropped_attributes_count:
-                out.write(b"(")
+                out += b"("
                 write_varint_unsigned(out, self.dropped_attributes_count)
             if self.flags:
-                out.write(b"5")
-                out.write(struct.pack("<I", self.flags))
+                out += b"5"
+                out += struct.pack("<I", self.flags)
 
 
 class Status(MessageMarshaler):
@@ -462,14 +462,14 @@ class Status(MessageMarshaler):
     def write_to(self, out: BytesIO) -> None:
         if self.message:
             v = self._message_encoded
-            out.write(b"\x12")
+            out += b"\x12"
             write_varint_unsigned(out, len(v))
-            out.write(v)
+            out += v
         if self.code:
             v = self.code
             if not isinstance(v, int):
                 v = v.self.code
-            out.write(b"\x18")
+            out += b"\x18"
             write_varint_unsigned(out, v)
 
     class StatusCode(Enum):

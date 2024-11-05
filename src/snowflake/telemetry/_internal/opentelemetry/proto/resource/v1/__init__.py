@@ -43,9 +43,9 @@ class Resource(MessageMarshaler):
     def write_to(self, out: BytesIO) -> None:
         if self.attributes:
             for v in self.attributes:
-                out.write(b"\n")
+                out += b"\n"
                 write_varint_unsigned(out, v._get_size())
                 v.write_to(out)
         if self.dropped_attributes_count:
-            out.write(b"\x10")
+            out += b"\x10"
             write_varint_unsigned(out, self.dropped_attributes_count)
