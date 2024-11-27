@@ -25,7 +25,7 @@ from opentelemetry.exporter.otlp.proto.common._internal.trace_encoder import (
     _SPAN_KIND_MAP,
     _encode_status,
 )
-from snowflake.telemetry._internal.opentelemetry.exporter.otlp.proto.common.trace_encoder import encode_spans
+from snowflake.telemetry._internal.opentelemetry_proxy import encode_spans
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest as PB2ExportTraceServiceRequest,
 )

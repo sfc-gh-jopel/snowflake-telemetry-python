@@ -21,10 +21,10 @@ import typing
 import opentelemetry.sdk.util.instrumentation as otel_instrumentation
 import opentelemetry.sdk._logs._internal as _logs_internal
 
-from snowflake.telemetry._internal.opentelemetry.exporter.otlp.proto.common._log_encoder import (
+from snowflake.telemetry._internal.opentelemetry_proxy import (
     encode_logs,
+    LogsData,
 )
-from snowflake.telemetry._internal.opentelemetry.proto.logs.v1.logs_marshaler import LogsData
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk._logs import export
 from opentelemetry.sdk import _logs

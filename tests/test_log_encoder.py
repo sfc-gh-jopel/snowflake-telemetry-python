@@ -22,7 +22,7 @@ from opentelemetry.exporter.otlp.proto.common._internal import (
     _encode_trace_id,
     _encode_value,
 )
-from snowflake.telemetry._internal.opentelemetry.exporter.otlp.proto.common._log_encoder import encode_logs
+from snowflake.telemetry._internal.opentelemetry_proxy import encode_logs
 from opentelemetry.proto.collector.logs.v1.logs_service_pb2 import (
     ExportLogsServiceRequest,
 )
@@ -69,7 +69,7 @@ class TestOTLPLogEncoder(unittest.TestCase):
 
     def test_dropped_attributes_count(self):
         sdk_logs = self._get_test_logs_dropped_attributes()
-        encoded_logs = bytes(encode_logs(sdk_logs))
+        encoded_logs = encode_logs(sdk_logs).SerializeToString()
         decoded_logs = PB2LogsData()
         decoded_logs.ParseFromString(encoded_logs)
         self.assertTrue(hasattr(sdk_logs[0].log_record, "dropped_attributes"))

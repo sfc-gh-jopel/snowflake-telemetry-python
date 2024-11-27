@@ -113,9 +113,6 @@ class MessageMarshaler:
         self.write_to(stream)
         return bytes(stream)
     
-    def __bytes__(self) -> bytes:
-        return self.SerializeToString()
-    
     # The following size and serialize functions may be inlined by the code generator
     # The following strings are replaced by the code generator for inlining:
     #   - TAG
